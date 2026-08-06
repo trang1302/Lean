@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**/*.md)",
+      "Read(server/src/**)",
+      "Read(server/prisma/**)",
+      "Read(server/test/**)",
+      "Read(web/src/**)",
+      "Bash(npm install*)",
+      "Bash(npm ci)",
+      "Bash(npm run *)",
+      "Bash(npm test*)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx prisma generate*)",
+      "Bash(npx prisma db push*)",
+      "Bash(npx prisma studio*)",
+      "Bash(npx prisma format*)",
+      "Bash(node -e *)",
+      "Bash(node --version)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(curl -s http://localhost:*)",
+      "Bash(curl -i http://localhost:*)",
+      "Bash(curl -X * http://localhost:*)"
+    ],
+    "deny": [
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git push --force)",
+      "Bash(rm -rf*)",
+      "Bash(rm -rf *)",
+      "Bash(npm publish*)",
+      "Bash(npx prisma migrate reset*)",
+      "Bash(npx prisma db push --force-reset*)",
+      "Read(./.env*)",
+      "Read(**/.env*)",
+      "Read(./secrets/**)",
+      "Read(./.claude/settings.local.json)",
+      "Edit(server/prisma/data.db)",
+      "Write(server/prisma/data.db)"
+    ],
+    "defaultMode": "plan"
+  }
+}

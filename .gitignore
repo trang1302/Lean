@@ -1,0 +1,26 @@
+# Claude Code — cấu hình cá nhân, chứa ntfy topic riêng
+.claude/settings.local.json
+.claude/memory/
+.claude/cache/
+CLAUDE.local.md
+
+# Dependencies
+node_modules/
+
+# Build output
+server/dist/
+web/dist/
+
+# Database (SQLite) — dữ liệu cá nhân, không commit
+server/prisma/data.db
+server/prisma/data.db-journal
+*.db
+*.db-journal
+
+# Environment
+.env
+.env.local
+
+# Logs & temp
+*.log
+.tmp/

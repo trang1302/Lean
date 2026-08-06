@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model BodyLog {
+  id        String   @id @default(cuid())
+  date      String   @unique
+  weightKg  Float?
+  waistCm   Float?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Meal {
+  id        String   @id @default(cuid())
+  date      String
+  slot      String
+  name      String
+  calories  Int
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+model Goal {
+  id                 String   @id @default("singleton")
+  targetWeightKg     Float?
+  targetDate         String?
+  dailyCalorieTarget Int?
+  updatedAt          DateTime @updatedAt
+}
+
+model Reminder {
+  id        String   @id @default(cuid())
+  kind      String   @unique
+  timeOfDay String
+  enabled   Boolean  @default(false)
+  ntfyTopic String?
+  updatedAt DateTime @updatedAt
+}
