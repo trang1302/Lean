@@ -1,0 +1,8 @@
+/* CỐ Ý dùng --color-text-muted, KHÔNG dùng bất kỳ biến --color-danger* nào
+   — rỗng không phải lỗi, không được mượn nhầm màu của ErrorState. */
+.emptyState {
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  text-align: center;
+}

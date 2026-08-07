@@ -1,24 +1,42 @@
+// Mọi bảng mang cột `userId` ngay từ đầu dù bản này chưa có đăng nhập.
+// Hiện tại mọi bản ghi dùng hằng LOCAL_USER_ID trong src/shared/constants.ts.
+// Thêm auth sau = thay hằng đó bằng user lấy từ session, không phải migrate lại schema.
+//
+// `date` luôn là chuỗi "YYYY-MM-DD", KHÔNG BAO GIỜ là DateTime — xem CLAUDE.md.
+
+// Prisma 7: `url` không còn khai ở đây — nằm trong prisma.config.ts.
+// Client sinh ra ở src/generated/prisma (gitignore), nối DB qua driver adapter.
+
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+
+  // Bắt buộc với `moduleResolution: nodenext` trong tsconfig: mặc định generator
+  // sinh barrel re-export THIẾU đuôi (`from './models/BodyLog'`), nodenext từ chối
+  // phân giải nên mọi import từ `generated/prisma/models.js` sẽ báo TS2305.
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model BodyLog {
-  id        String   @id @default(cuid())
-  date      String   @unique
+  userId    String
+  date      String
   weightKg  Float?
   waistCm   Float?
   note      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@id([userId, date])
 }
 
 model Meal {
   id        String   @id @default(cuid())
+  userId    String
   date      String
   slot      String
   name      String
@@ -27,11 +45,11 @@ model Meal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([date])
+  @@index([userId, date])
 }
 
 model Goal {
-  id                 String   @id @default("singleton")
+  userId             String   @id
   targetWeightKg     Float?
   targetDate         String?
   dailyCalorieTarget Int?
@@ -40,9 +58,12 @@ model Goal {
 
 model Reminder {
   id        String   @id @default(cuid())
-  kind      String   @unique
+  userId    String
+  kind      String
   timeOfDay String
   enabled   Boolean  @default(false)
   ntfyTopic String?
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, kind])
 }

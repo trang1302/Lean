@@ -20,7 +20,7 @@ $ARGUMENTS
 ## Cách đọc tham số
 
 - **Spec paths**: mọi tham số không bắt đầu bằng `--`. File hoặc thư mục đều được.
-  Nếu không truyền gì → mặc định `2026-08-06-health-tracker-design.md` §9.
+  Nếu không truyền gì → mặc định quét `docs/features/*/SPEC.md`.
 - **`--src=<value>`**: thư mục nguồn. Bỏ trống → tự dò (mặc định `server/src`).
 - Cờ lạ: dừng và hỏi tôi.
 
@@ -34,7 +34,7 @@ Không cần dò lại, đây là sự thật:
 | Integration HTTP | supertest |
 | Vị trí test | `server/test/*.test.ts` |
 | Lệnh chạy | `cd server && npm test` |
-| Ưu tiên cao nhất | `server/src/stats.ts` — hàm thuần, test được không cần DB |
+| Ưu tiên cao nhất | `server/src/shared/stats/` — hàm thuần, test được không cần DB |
 | Test DB | `server/prisma/test.db` qua `server/test/globalSetup.ts` |
 
 ## Kế hoạch thực thi

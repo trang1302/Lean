@@ -1,0 +1,44 @@
+/*
+ * Biến dùng chung (màu, khoảng cách, bo góc) cho MỌI *.module.css trong
+ * `web/`. Đây KHÔNG phải "một file CSS chung" theo nghĩa bị cấm ở
+ * docs/features/web-shell/SPEC.md §10 câu 7 — file đó cấm CLASS toàn cục
+ * (`.card`, `.button`…) vì tên class trùng nhau sẽ đè nhau. File này không
+ * định nghĩa một class nào, chỉ định nghĩa CUSTOM PROPERTY trên `:root`
+ * (biến, không phải style áp trực tiếp lên phần tử nào) — hai component
+ * cùng đọc `var(--color-primary)` không "đè" lên nhau theo cách một class
+ * trùng tên sẽ đè.
+ *
+ * Import ĐÚNG MỘT LẦN ở main.tsx (điểm vào ứng dụng), không import lại ở
+ * từng component — `:root` là toàn cục theo đúng nghĩa của biến CSS, nạp
+ * nhiều lần chỉ tốn băng thông chứ không sai, nhưng một lần là đủ và rõ ràng
+ * hơn về nơi cấu hình sống.
+ *
+ * Cố ý ít biến — YAGNI (brief Bước 5): đây là bảng màu tối thiểu cho 3 màn
+ * hình cá nhân dùng, không phải một design system. Thêm biến khi có nhu cầu
+ * thật từ một component cụ thể, không thêm trước.
+ */
+:root {
+  --color-text: #1f2933;
+  --color-text-muted: #52606d;
+  --color-border: #cbd2d9;
+  --color-surface: #ffffff;
+  --color-bg-muted: #f5f7fa;
+
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-contrast: #ffffff;
+
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  --radius: 8px;
+  --font-size-base: 1rem;
+  --font-size-sm: 0.875rem;
+}

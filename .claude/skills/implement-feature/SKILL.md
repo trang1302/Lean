@@ -14,7 +14,9 @@ Tôi yêu cầu implement / code một chức năng, kèm file spec, plan, PRD, 
 - Input có section "Hướng dẫn cho Claude Code" hoặc đánh số Task → follow đúng thứ tự đó.
 - Không có → đọc toàn bộ, rồi tóm tắt lại cho tôi: **làm gì, đụng bảng nào,
   thêm endpoint nào, có đụng `stats.ts` không**.
-- Luôn đối chiếu với `2026-08-06-health-tracker-design.md`. Spec là nguồn chân lý.
+- Luôn đối chiếu với tài liệu: `docs/README.md` là bản đồ, phần dùng chung ở
+  `docs/overview/`, mỗi chức năng có `docs/features/<tên>/SPEC.md`. Sửa feature
+  đã có thì đọc `SPEC.md` của nó trước — nhất là mục "Quyết định vượt spec".
   Yêu cầu của tôi mâu thuẫn với spec → nói ra, đừng lặng lẽ chọn một bên.
 - Nếu là thứ nằm trong §2 "Không có trong bản này" (AI phân tích ảnh, lưu ảnh,
   DB món ăn dựng sẵn, auth, truy cập từ điện thoại) → **DỪNG**, đọc lý do ở §2
@@ -26,10 +28,11 @@ Không grep mù. Đọc theo thứ tự này:
 
 ```
 CLAUDE.md                      → quy ước bắt buộc
-server/src/time.ts             → mọi thứ liên quan ngày đi qua đây
-server/src/stats.ts            → hàm thuần đã có gì, đừng viết trùng
+server/src/lib/time.ts         → mọi thứ liên quan ngày đi qua đây
+server/src/shared/stats/       → hàm thuần đã có gì, đừng viết trùng
+server/src/shared/constants.ts → LOCAL_USER_ID, mọi truy vấn phải mang userId
 server/prisma/schema.prisma    → bảng đã có gì
-server/src/routes/*.ts         → pattern route đang dùng
+server/src/features/*/         → pattern 4 lớp đang dùng
 server/test/*.test.ts          → convention test đang dùng
 ```
 

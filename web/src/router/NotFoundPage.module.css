@@ -1,0 +1,15 @@
+.wrap {
+  max-width: 32rem;
+  margin: var(--space-6) auto;
+  padding: 0 var(--space-4);
+  text-align: center;
+  color: var(--color-text);
+}
+
+.link {
+  color: var(--color-primary);
+}
+
+.link:hover {
+  color: var(--color-primary-hover);
+}

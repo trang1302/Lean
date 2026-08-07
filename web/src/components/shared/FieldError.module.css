@@ -1,0 +1,5 @@
+.fieldError {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+}

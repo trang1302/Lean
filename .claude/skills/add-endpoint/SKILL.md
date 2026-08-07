@@ -7,15 +7,32 @@ description: Use when adding or changing an HTTP endpoint under /api in server/s
 
 ## Tổng quan
 
-Route trong dự án này chỉ làm ba việc: **validate bằng Zod → lấy dữ liệu từ
-Prisma → gọi hàm thuần trong `stats.ts`**. Bất kỳ phép tính nào nằm trong route
-là sai chỗ. Bất kỳ `Date`/`DateTime` nào chạm vào field `date` là bug múi giờ.
+Endpoint đi đủ **4 lớp**, không có ngoại lệ kể cả CRUD tầm thường:
+
+```
+controller  nhận request, validate bằng Zod, trả response — không chứa nghiệp vụ
+   ↓
+service     nghiệp vụ; gọi hàm thuần trong shared/stats/ nếu cần tính toán
+   ↓
+repository  truy vấn Prisma — chỗ DUY NHẤT được import prisma
+   ↓
+Prisma
+```
+
+Bất kỳ phép tính nào nằm ngoài `shared/stats/` là sai chỗ. Bất kỳ `Date`/`DateTime`
+nào chạm vào field `date` là bug múi giờ. Bất kỳ truy vấn nào thiếu `userId` là bug
+cách ly dữ liệu — kể cả khi hiện tại chỉ có một người dùng.
 
 ## Quy trình
 
-1. **Đối chiếu spec trước.** §5 của `2026-08-06-health-tracker-design.md` có
-   bảng route và bảng ràng buộc validate. Nếu endpoint bạn định thêm không có
-   trong bảng đó → **DỪNG**, hỏi tôi trước. Đừng tự phát minh route.
+1. **Đối chiếu tài liệu trước.** `docs/features/<tên>/SPEC.md` có bảng route
+   thật của feature đó; `docs/overview/04-conventions.md` có bảng ràng buộc
+   validate dùng chung. Nếu endpoint bạn định thêm không có trong SPEC →
+   **DỪNG**, hỏi tôi trước. Đừng tự phát minh route.
+
+   Đọc luôn mục **"Quyết định vượt spec"** của SPEC đó — nó ghi những lựa chọn
+   như mã trạng thái, hình dạng response, có `.strict()` hay không. Endpoint mới
+   phải nhất quán với chúng, nếu không cùng một feature sẽ hành xử hai kiểu.
 
 2. **Viết test trước** (`server/test/<resource>.test.ts`, supertest). Tối thiểu
    phải có: happy path, một case validate hỏng → `400`, và `404` nếu route có
@@ -74,8 +91,12 @@ là sai chỗ. Bất kỳ `Date`/`DateTime` nào chạm vào field `date` là bu
 
 | Việc | Chỗ để code |
 |---|---|
-| Validate | Zod schema đầu file route |
-| Ngày / múi giờ | `server/src/time.ts` |
-| Phép tính | `server/src/stats.ts` (hàm thuần) |
-| Truy vấn DB | trong handler, qua `server/src/db.ts` |
-| Đăng ký | `server/src/app.ts`, prefix `/api` |
+| Validate | `features/<f>/dtos/<f>.request.ts` (Zod) |
+| Hình dạng trả về | `features/<f>/dtos/<f>.response.ts` |
+| Nhận request, trả response | `features/<f>/controllers/<f>.controller.ts` |
+| Nghiệp vụ | `features/<f>/services/<f>.service.ts` |
+| Truy vấn DB | `features/<f>/repositories/<f>.repository.ts` |
+| Ngày / múi giờ | `server/src/lib/time.ts` |
+| Phép tính | `server/src/shared/stats/` (hàm thuần) |
+| Hằng `userId` | `server/src/shared/constants.ts` |
+| Đăng ký | `features/<f>/index.ts` export router → `src/app.ts`, prefix `/api` |

@@ -1,0 +1,20 @@
+{
+  // Cấu hình RIÊNG cho file chạy trong Node, không phải trình duyệt —
+  // hiện chỉ có `vite.config.ts` (đọc `process.env['VITEST_POOL']`).
+  // Đây là NƠI DUY NHẤT `@types/node` được phép có hiệu lực; `tsconfig.json`
+  // (src + test, chạy trong trình duyệt/jsdom) cố ý chặn nó qua `types: []`.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "types": ["node"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["vite.config.ts"]
+}

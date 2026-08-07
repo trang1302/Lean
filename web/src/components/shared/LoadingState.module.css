@@ -1,0 +1,6 @@
+.loadingState {
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  text-align: center;
+}

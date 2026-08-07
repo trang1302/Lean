@@ -11,6 +11,9 @@ node_modules/
 server/dist/
 web/dist/
 
+# Prisma client sinh ra từ schema — chạy `npx prisma generate` để có
+server/src/generated/
+
 # Database (SQLite) — dữ liệu cá nhân, không commit
 server/prisma/data.db
 server/prisma/data.db-journal
@@ -21,6 +24,12 @@ server/prisma/data.db-journal
 .env
 .env.local
 
+# GitNexus — index sinh ra từ code, mỗi máy tự chạy `npx gitnexus analyze`
+.gitnexus/
+
 # Logs & temp
 *.log
 .tmp/
+
+# Superpowers SDD — scratch, khong commit
+.superpowers/

@@ -1,0 +1,81 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.tab {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  /* Viền trong suốt giữ chỗ để tab active (viền màu) không đổi kích thước
+     layout — tránh tab nhảy vị trí khi bấm qua lại. */
+  border-bottom: 2px solid transparent;
+}
+
+.tab:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Đánh dấu tab đang mở CHO NGƯỜI DÙNG THẤY (màu + đậm + viền dưới) —
+   nhưng đây chỉ là phần thị giác. Phần dành cho công nghệ trợ giúp là
+   `aria-current="page"` mà `NavLink` tự gắn (xem AppLayout.tsx), không nằm
+   trong CSS này. */
+.tabActive {
+  color: var(--color-primary);
+  font-weight: 600;
+  border-bottom-color: var(--color-primary);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.identityPlaceholder {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.logoutButton {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.content {
+  flex: 1;
+  padding: var(--space-4);
+}

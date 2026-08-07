@@ -1,9 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022"],
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    // Dự án là Node ESM ("type": "module") — nodenext mô hình đúng cách Node
+    // phân giải module, và bắt buộc import kèm đuôi ".js" như code đang viết.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
@@ -12,5 +15,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts"]
+  // Prisma client sinh ra trong src/generated — không typecheck lại code máy sinh.
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/generated/**"]
 }

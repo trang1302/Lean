@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    // DOM.Iterable riêng vì code lặp NodeList/FormData — ES2023 một mình không có.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    // Bundler (không phải nodenext như server/) vì Vite tự phân giải import,
+    // không qua Node resolution — khớp cách vite.config.ts và React 19 mong đợi.
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    // Rỗng có chủ đích: mặc định TS tự nạp MỌI gói @types/* trong
+    // node_modules làm global ambient. `@types/node` cài cho
+    // `tsconfig.node.json` (vite.config.ts) sẽ rò `process`/`Buffer`/…
+    // vào code trình duyệt ở đây nếu không chặn. Code trình duyệt không
+    // cần global ambient nào — DOM đã có qua "lib" ở trên, React/RTL đến
+    // từ type của chính module (`import`), không phải ambient.
+    "types": [],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    // Vite (esbuild) làm việc emit thật; tsc chỉ kiểm kiểu (script `typecheck`/`build`).
+    "noEmit": true
+  },
+  // `vite.config.ts` KHÔNG nằm ở đây — nó chạy trong Node (đọc process.env),
+  // tách sang `tsconfig.node.json` để `@types/node` không rò vào "src"/"test".
+  "include": ["src", "test"]
+}
