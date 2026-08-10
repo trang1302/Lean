@@ -1,6 +1,9 @@
 import { createBrowserRouter } from 'react-router';
 import { AppLayout } from './AppLayout';
 import { NotFoundPage } from './NotFoundPage';
+import { TodayPage } from '../features/today';
+import { ChartsPage } from '../features/charts';
+import { SettingsPage } from '../features/settings';
 
 // Bốn placeholder tối giản — SPEC §1.1: "web-shell không render một ô nhập
 // cân nặng, một biểu đồ, hay một công tắc nhắc nhở nào." Ba trang chưa tồn
@@ -17,18 +20,6 @@ import { NotFoundPage } from './NotFoundPage';
 // `AppLayout` không đụng lại (SPEC §1.1, PLAN §2.2: "mỗi trang chạm đúng một
 // dòng đăng ký route" — đọc là "một điểm đăng ký", không phải nghĩa đen
 // "một dòng văn bản duy nhất").
-function TodayPlaceholder() {
-  return <p>Trang Hôm nay — giữ chỗ, chờ feature `web-today`.</p>;
-}
-
-function ChartsPlaceholder() {
-  return <p>Trang Biểu đồ — giữ chỗ, chờ feature `web-charts`.</p>;
-}
-
-function SettingsPlaceholder() {
-  return <p>Trang Cài đặt — giữ chỗ, chờ feature `web-settings`.</p>;
-}
-
 function LoginPlaceholder() {
   return <p>Trang Đăng nhập — giữ chỗ, chờ Bước 9 (`features/auth`).</p>;
 }
@@ -42,9 +33,9 @@ export const routes = [
   {
     element: <AppLayout />,
     children: [
-      { index: true, element: <TodayPlaceholder /> },
-      { path: 'charts', element: <ChartsPlaceholder /> },
-      { path: 'settings', element: <SettingsPlaceholder /> },
+      { index: true, element: <TodayPage /> },
+      { path: 'charts', element: <ChartsPage /> },
+      { path: 'settings', element: <SettingsPage /> },
     ],
   },
   { path: 'login', element: <LoginPlaceholder /> },

@@ -31,25 +31,25 @@ describe('router: 4 route + NotFoundPage (SPEC §5.2)', () => {
     errorSpy.mockRestore();
   });
 
-  it('render ở "/" → placeholder Hôm nay, không phải của Cài đặt hay Biểu đồ', () => {
+  it('render ở "/" → trang Hôm nay, không phải Cài đặt hay Biểu đồ', () => {
     renderAt('/');
-    expect(screen.getByText(/Trang Hôm nay/)).toBeTruthy();
-    expect(screen.queryByText(/Trang Cài đặt/)).toBeNull();
-    expect(screen.queryByText(/Trang Biểu đồ/)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Hôm nay' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Cài đặt' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Biểu đồ' })).toBeNull();
   });
 
-  it('render thẳng ở "/settings" (mô phỏng F5) → placeholder Cài đặt, KHÔNG phải Hôm nay', () => {
+  it('render thẳng ở "/settings" (mô phỏng F5) → trang Cài đặt, KHÔNG phải Hôm nay', () => {
     // Đây là ca "F5 ở /charts vẫn ở /charts" của deliverable: vào thẳng route
     // qua initialEntries (không đi qua click) và không bị văng về "/".
     renderAt('/settings');
-    expect(screen.getByText(/Trang Cài đặt/)).toBeTruthy();
-    expect(screen.queryByText(/Trang Hôm nay/)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Cài đặt' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Hôm nay' })).toBeNull();
   });
 
   it('render thẳng ở "/charts" (mô phỏng F5) → vẫn ở /charts, không văng về "/"', () => {
     renderAt('/charts');
-    expect(screen.getByText(/Trang Biểu đồ/)).toBeTruthy();
-    expect(screen.queryByText(/Trang Hôm nay/)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Biểu đồ' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Hôm nay' })).toBeNull();
   });
 
   it('đường dẫn lạ "/khong-co" → NotFoundPage, không phải màn hình trắng', () => {
@@ -87,18 +87,18 @@ describe('AppLayout: thanh tab — click, đường dẫn đổi, tab đang mở
     const user = userEvent.setup();
     renderAt('/');
 
-    expect(screen.getByText(/Trang Hôm nay/)).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Hôm nay' })).toBeTruthy();
 
     await user.click(screen.getByRole('link', { name: 'Biểu đồ' }));
-    expect(screen.getByText(/Trang Biểu đồ/)).toBeTruthy();
-    expect(screen.queryByText(/Trang Hôm nay/)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Biểu đồ' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Hôm nay' })).toBeNull();
 
     await user.click(screen.getByRole('link', { name: 'Cài đặt' }));
-    expect(screen.getByText(/Trang Cài đặt/)).toBeTruthy();
-    expect(screen.queryByText(/Trang Biểu đồ/)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Cài đặt' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Biểu đồ' })).toBeNull();
 
     await user.click(screen.getByRole('link', { name: 'Hôm nay' }));
-    expect(screen.getByText(/Trang Hôm nay/)).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Hôm nay' })).toBeTruthy();
   });
 
   it('tab đang mở mang aria-current="page" — đánh dấu cho công nghệ trợ giúp, không chỉ màu sắc', async () => {
@@ -160,8 +160,8 @@ describe('AppLayout: điều hướng bằng bàn phím (Tab, Enter, Space)', ()
 
     await user.keyboard('{Enter}');
 
-    expect(screen.getByText(/Trang Biểu đồ/)).toBeTruthy();
-    expect(screen.queryByText(/Trang Hôm nay/)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Biểu đồ' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Hôm nay' })).toBeNull();
   });
 
   it('Space khi tab "Cài đặt" đang focus → điều hướng sang /settings', async () => {
@@ -175,8 +175,8 @@ describe('AppLayout: điều hướng bằng bàn phím (Tab, Enter, Space)', ()
 
     await user.keyboard(' ');
 
-    expect(screen.getByText(/Trang Cài đặt/)).toBeTruthy();
-    expect(screen.queryByText(/Trang Hôm nay/)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Cài đặt' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Hôm nay' })).toBeNull();
   });
 
   it('thứ tự Tab đi hết ba tab rồi rời khỏi <nav>, không kẹt lại', async () => {

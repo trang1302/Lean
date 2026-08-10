@@ -1,0 +1,27 @@
+.help {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-muted);
+}
+
+.summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.body {
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.body p {
+  margin: 0 0 var(--space-2);
+}
+
+.body ol {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-4);
+}
