@@ -36,7 +36,7 @@ Nghĩa là hiện tại app dùng được **qua HTTP API**, chưa có màn hìn
 > chứng minh gì — nó chỉ nạp lớp JS bọc ngoài, binding gốc chỉ nổ khi thật sự truy vấn.
 > Bằng chứng duy nhất đáng tin là `cd server && npm test`. (Đã vấp đúng bẫy này
 > ngày 2026-08-07 khi nâng Node 22 → 24.)
-- Không cần cài database. SQLite nằm gọn trong `server/prisma/data.db`.
+- Không cần cài database. SQLite nằm gọn trong `server/data.db`.
 
 ## Chạy lần đầu
 
@@ -44,7 +44,7 @@ Nghĩa là hiện tại app dùng được **qua HTTP API**, chưa có màn hìn
 cd server
 npm install
 cp .env.example .env      # PowerShell: copy .env.example .env
-npm run prisma:push       # tạo prisma/data.db + sinh Prisma client
+npm run prisma:push       # tạo server/data.db + sinh Prisma client
 npm run dev               # http://localhost:3000
 ```
 
@@ -61,10 +61,18 @@ khởi động được. Cần sinh lại client mà không đụng DB thì dùn
 Biến môi trường (`server/.env`, đọc và validate ở `server/src/config/env.ts`):
 
 ```
-DATABASE_URL="file:./data.db"      # đường dẫn tương đối so với prisma/
+DATABASE_URL="file:./data.db"      # tương đối với server/, KHÔNG phải prisma/
 PORT=3000
 NTFY_BASE_URL="https://ntfy.sh"
 ```
+
+**Đường dẫn `file:` tương đối được resolve theo `server/`** — thư mục chứa
+`prisma.config.ts`, cũng là cwd của mọi `npm run`. Nên `file:./data.db` là `server/data.db`,
+**không** phải `server/prisma/data.db`. Prisma ≤ 6 resolve theo thư mục `prisma/`; bản 7 dời
+connection string sang `prisma.config.ts` và đổi luôn gốc resolve. Chạy `tsx src/server.ts`
+từ cwd khác (IDE run config, script ở gốc repo) sẽ mở một file `data.db` **khác và rỗng** —
+không báo lỗi lúc khởi động, chỉ nổ `P2021 table does not exist` khi gọi API. Vấp ngày
+2026-08-10, do `prisma/data.db` sinh từ thời Prisma 6 còn sót lại.
 
 Không có biến timezone. Múi giờ là hằng `TZ = 'Asia/Ho_Chi_Minh'` trong
 `server/src/lib/time.ts` — sửa ở đó nếu cần đổi.
@@ -130,7 +138,7 @@ phiền nữa.
 
 ## Sao lưu
 
-Toàn bộ dữ liệu nằm trong một file: `server/prisma/data.db`. Copy file đó là xong bản backup;
+Toàn bộ dữ liệu nằm trong một file: `server/data.db`. Copy file đó là xong bản backup;
 chép ngược vào chỗ cũ là khôi phục. Nên dừng server trước khi copy.
 
 File này nằm trong `.gitignore` — dữ liệu cá nhân, không commit.

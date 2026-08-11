@@ -11,7 +11,7 @@ Liên quan: [`01-architecture.md`](01-architecture.md) (cây thư mục và lý 
 Áp dụng cho **mọi task**, không lặp lại trong từng task:
 
 - **Phiên bản: luôn dùng bản mới nhất.** Đang chạy Express **5** · TypeScript **7** · Prisma **7** · Zod **4** · node-cron **4** · Vitest **4** · React **19** · Vite **8** · Recharts **3**. Ba hệ quả bắt buộc nhớ:
-  - **Prisma 7**: `url` không khai trong `datasource` mà ở `prisma.config.ts`; client sinh ra ở `src/generated/prisma` và import **từ đó**, không từ `@prisma/client`; nối DB qua `PrismaBetterSqlite3` adapter; `db push` không còn cờ `--skip-generate`.
+  - **Prisma 7**: `url` không khai trong `datasource` mà ở `prisma.config.ts`; client sinh ra ở `src/generated/prisma` và import **từ đó**, không từ `@prisma/client`; nối DB qua `PrismaBetterSqlite3` adapter; `db push` không còn cờ `--skip-generate`; đường dẫn `file:` tương đối resolve theo `server/` (nơi có `prisma.config.ts`) chứ **không** theo `prisma/` như Prisma ≤ 6 — nên `file:./data.db` là `server/data.db`.
   - **Express 5** bắt lỗi async sẵn trong core — **không** cài `express-async-errors`, không tự bọc try/catch để nuốt lỗi.
   - **Zod 4**: format validator lên top-level — `z.url()`, `z.email()`, thay cho `z.string().url()`, `z.string().email()`.
 - **Cấu trúc feature-first 4 lớp** (bám quán lệ `upip`): `controller → service → repository → Prisma`, **không ngoại lệ** kể cả CRUD tầm thường. `repositories/` là chỗ duy nhất được import `prisma`.

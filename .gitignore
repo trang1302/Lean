@@ -15,8 +15,8 @@ web/dist/
 server/src/generated/
 
 # Database (SQLite) — dữ liệu cá nhân, không commit
-server/prisma/data.db
-server/prisma/data.db-journal
+server/data.db
+server/data.db-journal
 *.db
 *.db-journal
 

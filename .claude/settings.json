@@ -39,8 +39,8 @@
       "Read(**/.env*)",
       "Read(./secrets/**)",
       "Read(./.claude/settings.local.json)",
-      "Edit(server/prisma/data.db)",
-      "Write(server/prisma/data.db)"
+      "Edit(server/data.db)",
+      "Write(server/data.db)"
     ],
     "defaultMode": "plan"
   }

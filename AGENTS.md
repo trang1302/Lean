@@ -64,7 +64,9 @@ spec". Code và tài liệu lệch nhau thì **code đúng**, sửa tài liệu 
   đọc lý do ở đó rồi hỏi trước khi đề xuất lại.
 - **NEVER** chạy `git commit` hoặc `git push`. Chủ repo tự commit.
 - **NEVER** để chữ "Claude" hay "AI-generated" trong commit message.
-- **NEVER** xóa hay reset `server/prisma/data.db` — đó là dữ liệu thật của người dùng.
+- **NEVER** xóa hay reset `server/data.db` — đó là dữ liệu thật của người dùng.
+  (Đường dẫn cũ `server/prisma/data.db` là di sản Prisma 6, đã xóa ngày 2026-08-10.
+  `file:./data.db` resolve theo `server/` — xem `README.md` mục "Chạy lần đầu".)
 
 ## Cạm bẫy đã biết
 
