@@ -368,7 +368,7 @@ npm run dev               # http://localhost:3000
 
 cd ../web
 npm install
-npm run dev               # http://localhost:5173
+npm run dev               # http://localhost:7173
 ```
 
 Biến môi trường (`LEAN/server/.env`):

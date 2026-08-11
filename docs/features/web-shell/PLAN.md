@@ -136,9 +136,9 @@ Cài luôn `recharts@3` ở bước này để `package.json` có **một** ch�
 
 *Deliverable:*
 - `cd web && npm install` sạch;
-- `npm run dev` → `http://localhost:5173` mở được một trang trắng có tiêu đề;
+- `npm run dev` → `http://localhost:7173` mở được một trang trắng có tiêu đề;
 - `npm run typecheck` sạch; `npm run build` sạch;
-- với `server` đang chạy, mở DevTools gọi `fetch('/api/health')` từ console trang `:5173` →
+- với `server` đang chạy, mở DevTools gọi `fetch('/api/health')` từ console trang `:7173` →
   `{"ok":true}` (**chứng minh proxy hoạt động**, không phải giả định).
 
 *Commit:* `feat(web): scaffold Vite 8 + React 19 + TypeScript 7`
@@ -407,7 +407,7 @@ Ba PLAN kia đang ghi *"script dự kiến, chưa xác nhận"*
 
 | Script | Lệnh | Ghi chú |
 |---|---|---|
-| `dev` | `vite` | `http://localhost:5173`, proxy `/api` → `:3000` |
+| `dev` | `vite` | `http://localhost:7173`, proxy `/api` → `:3000` |
 | `build` | `npm run typecheck && vite build` | **Cố ý gộp typecheck.** Cả ba PLAN dùng *"`npm run build` sạch"* làm cổng nghiệm thu; nếu `build` không kiểm kiểu thì câu đó yếu hơn người viết tưởng |
 | `preview` | `vite preview` | Xem bản build tĩnh |
 | `test` | `vitest run` | Giống `server/package.json` |
@@ -433,7 +433,7 @@ Chạy từ `C:\Project\WorkSpace\Lean\web` (quy ước
 cd web
 
 npm install
-npm run dev            # http://localhost:5173, proxy /api → :3000
+npm run dev            # http://localhost:7173, proxy /api → :3000
 
 npm test                                # toàn bộ test của web
 npx vitest run src/lib                  # chỉ apiClient + format (Bước 3, 4)
@@ -451,7 +451,7 @@ Mọi kiểm tra bằng mắt cần **cả hai** tiến trình:
 cd server && npm run dev          # http://localhost:3000
 
 # cửa sổ 2
-cd web && npm run dev             # http://localhost:5173
+cd web && npm run dev             # http://localhost:7173
 ```
 
 PowerShell: dùng hai cửa sổ, không nối bằng `&&`.

@@ -92,7 +92,7 @@ cd server && npx tsc --noEmit       # type check
 
 # Web
 cd web && npm install
-cd web && npm run dev               # http://localhost:5173
+cd web && npm run dev               # http://localhost:7173
 cd web && npm run build
 ```
 

@@ -75,7 +75,7 @@ npm run build
 # Web
 cd web
 npm install
-npm run dev               # http://localhost:5173
+npm run dev               # http://localhost:7173
 npm run build
 ```
 

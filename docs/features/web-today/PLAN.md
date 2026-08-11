@@ -29,7 +29,7 @@ mục "Phiên bản". Tối thiểu: `package.json`, `tsconfig.json`, `vite.conf
 `src/main.tsx`, `src/App.tsx`. Cần thêm hạ tầng test component (Vitest 4 + jsdom +
 `@testing-library/react`) — không có nó thì §4 không có bước nào verify được.
 
-Proxy `/api` → `http://localhost:3000` trong `vite.config.ts`, để dev server 5173 gọi được
+Proxy `/api` → `http://localhost:3000` trong `vite.config.ts`, để dev server 7173 gọi được
 backend mà không dính CORS và không phải cấu hình base URL tuyệt đối.
 
 ### B2 — `web/src/lib/apiClient.ts` *(chặn cứng)*
@@ -221,7 +221,7 @@ xong** — đây là lệnh *dự kiến*.
 cd web
 
 npm install
-npm run dev            # http://localhost:5173, proxy /api → :3000
+npm run dev            # http://localhost:7173, proxy /api → :3000
 
 npm test                                   # toàn bộ test của web
 npx vitest run src/features/today          # chỉ trang này
@@ -238,7 +238,7 @@ Chạy end-to-end thủ công thì cần **cả hai** tiến trình:
 cd server && npm run dev          # http://localhost:3000
 
 # terminal 2
-cd web && npm run dev             # http://localhost:5173
+cd web && npm run dev             # http://localhost:7173
 ```
 
 PowerShell: dùng hai cửa sổ, không nối bằng `&&` như trên bash.

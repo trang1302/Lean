@@ -144,7 +144,7 @@ Chạy từ `Lean/web` ([`04-conventions.md`](../../overview/04-conventions.md))
 ```bash
 cd web
 
-npm run dev          # xem bằng mắt tại http://localhost:5173/charts
+npm run dev          # xem bằng mắt tại http://localhost:7173/charts
 npx tsc --noEmit     # typecheck
 npm run build        # build production
 npm test             # unit test cho utils/chartData.ts (bước 4)

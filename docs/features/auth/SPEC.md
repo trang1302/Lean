@@ -169,8 +169,8 @@ Khi chạy sau reverse proxy (Render, nginx), **bắt buộc** `app.set('trust p
 thiếu nó thì Express không nhận ra kết nối là HTTPS và từ chối gửi cookie `secure`.
 
 > **Cạm bẫy dev — `sameSite: 'lax'` chỉ đúng nếu web và API **cùng origin**.** Vite chạy
-> `:5173`, Express chạy `:3000` → khác origin. Bắt buộc dùng **proxy của Vite** (`server.proxy`
-> trong `vite.config.ts`) để `/api` đi qua `:5173`. Nếu gọi thẳng `http://localhost:3000` thì
+> `:7173`, Express chạy `:3000` → khác origin. Bắt buộc dùng **proxy của Vite** (`server.proxy`
+> trong `vite.config.ts`) để `/api` đi qua `:7173`. Nếu gọi thẳng `http://localhost:3000` thì
 > phải hạ xuống `sameSite: 'none'` + `secure: true` + CORS `credentials` — tức là **tự tháo
 > lớp phòng vệ CSRF cấp cookie chỉ để tiện lúc dev**. Không làm thế.
 

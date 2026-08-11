@@ -93,7 +93,7 @@ mới nhất":
 | Thứ | Bản | Ghi chú |
 |---|---|---|
 | React | **19** | |
-| Vite | **8** | dev server `:5173` |
+| Vite | **8** | dev server `:7173` |
 | TypeScript | **7** | cùng bản với `server/` |
 | Recharts | **3** | chỉ `web-charts` dùng; cài ở scaffold để `package.json` có một chủ |
 | Vitest | **4** | cùng bản với `server/` |
@@ -124,7 +124,7 @@ Nếu ai đó muốn thêm lại một trong bốn dòng trên: đó là quyết
 ### 3.3 Cấu hình gốc
 
 - **`vite.config.ts` — proxy `/api` → `http://localhost:3000` là BẮT BUỘC**, không phải tiện
-  nghi. `web` chạy `:5173`, API chạy `:3000` → khác origin. Cookie phiên dùng
+  nghi. `web` chạy `:7173`, API chạy `:3000` → khác origin. Cookie phiên dùng
   `sameSite: 'lax'` ([`auth/SPEC.md`](../auth/SPEC.md) §3.2), chỉ đúng khi **cùng origin**.
   Gọi thẳng `http://localhost:3000` buộc phải hạ xuống `sameSite: 'none'` + CORS
   `credentials` — tức **tự tháo lớp phòng vệ CSRF cấp cookie chỉ để tiện lúc dev**. Không làm

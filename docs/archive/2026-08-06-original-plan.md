@@ -3186,7 +3186,7 @@ Kỳ vọng: PASS, 7 test. Nếu FAIL ở `deleteMeal` thì `call()` đang parse
 
 - [ ] **Step 14: Chạy thử trong trình duyệt**
 
-Chạy: `npm run dev`, mở `http://localhost:5173`.
+Chạy: `npm run dev`, mở `http://localhost:7173`.
 Kỳ vọng: thấy 3 tab, bấm chuyển được, mỗi tab hiện "Chưa xây".
 
 - [ ] **Step 15: Commit**
@@ -3699,7 +3699,7 @@ Kỳ vọng: PASS toàn bộ, gồm cả `api.test.ts` từ Task 12.
 
 - [ ] **Step 7: Kiểm tra thủ công**
 
-Chạy server (`cd server && npm run dev`) và web (`cd web && npm run dev`), mở `http://localhost:5173`. Xác nhận từng mục:
+Chạy server (`cd server && npm run dev`) và web (`cd web && npm run dev`), mở `http://localhost:7173`. Xác nhận từng mục:
 
 1. Nhập cân nặng `72.4`, click ra ngoài → hiện "Đã lưu". Refresh trang → giá trị vẫn còn.
 2. Xóa trắng ô vòng bụng, click ra ngoài → không lỗi; refresh → vẫn trống.
@@ -4541,10 +4541,10 @@ npm run dev               # http://localhost:3000
 # Terminal 2 — web
 cd web
 npm install
-npm run dev               # http://localhost:5173
+npm run dev               # http://localhost:7173
 ```
 
-Mở http://localhost:5173.
+Mở http://localhost:7173.
 
 ## Chạy các lần sau
 

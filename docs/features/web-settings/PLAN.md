@@ -180,7 +180,7 @@ màn hình trắng hay `undefined`.
 Chạy từ `C:\Project\WorkSpace\Lean\web` (thư mục sẽ có sau khi scaffold):
 
 ```bash
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:7173
 npm run build      # vite build — phải sạch
 npx tsc --noEmit   # kiểm kiểu, không sinh file
 ```

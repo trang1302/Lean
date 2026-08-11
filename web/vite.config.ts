@@ -8,8 +8,14 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
+    // 7173 chứ không phải 5173 mặc định: 5173 đã bị dev server của `upip`
+    // (front_end_business) chiếm trên máy này. `strictPort` để Vite báo lỗi
+    // thay vì lặng lẽ nhảy sang 7174 — nhảy cổng ngầm là thứ làm mất thời gian
+    // đi tìm xem app đang chạy ở đâu.
+    port: 7173,
+    strictPort: true,
     proxy: {
-      // BẮT BUỘC, không phải tiện nghi: web chạy :5173, API chạy :3000 — khác
+      // BẮT BUỘC, không phải tiện nghi: web chạy :7173, API chạy :3000 — khác
       // origin. Cookie phiên dùng sameSite='lax' (chỉ đúng cùng origin); gọi
       // thẳng :3000 sẽ buộc hạ xuống sameSite='none' + CORS, tức tự tháo lớp
       // phòng vệ CSRF cấp cookie chỉ để tiện lúc dev. Xem SPEC.md §3.3.
