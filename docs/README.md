@@ -49,14 +49,30 @@ sẽ "sửa cho hợp lý" và làm hỏng thứ đang đúng.
 
 | Feature | Trạng thái |
 |---|---|
-| `body-logs` `meals` `goal` `summary` `reminders` | đã xong, 208 test pass |
-| `web-shell` | chưa bắt đầu — **phải làm trước 3 trang web** |
-| `web-today` `web-charts` `web-settings` | chưa bắt đầu, chặn bởi `web-shell` |
+| `body-logs` `meals` `goal` `summary` `reminders` | đã xong, 239 test pass |
+| `web-shell` | đã có code — router, layout, `apiClient`, các trạng thái dùng chung |
+| `web-today` `web-charts` `web-settings` | đã có code, 261 test pass |
 | `auth` `rbac` | **chưa implement** — mới có SPEC + PLAN |
+
+Đợt **`measures-and-goals`** (2026-08-11) đã xong: thêm 3 số đo cơ thể (`chestCm`,
+`shoulderCm`, `armCm`) và 6 trường mục tiêu (`startWeightKg`, `startDate`, 4 target vòng),
+xuyên từ schema qua API tới hai form web. Spec và kế hoạch ở
+`superpowers/specs/2026-08-11-measures-and-goals-design.md` và
+`superpowers/plans/2026-08-11-measures-and-goals.md`.
+
+Hai đợt còn lại của yêu cầu gốc **chưa bắt đầu**: `ui-mui` (chuyển UI kit sang MUI) và
+`charts-mui` (thay Recharts bằng `@mui/x-charts`, mỗi số đo một biểu đồ, đường mục tiêu
+riêng, và tờ lịch tháng theo % tiến độ). Cả hai cần spec riêng.
 
 `auth` và `rbac` đến từ quyết định ngày 2026-08-07: dự án sẽ có đăng nhập và phân quyền
 (`overview/00-goals-and-scope.md` §2). **Chưa có dòng code nào** — bản đang chạy vẫn không xác
 thực và vì thế vẫn **chỉ được chạy localhost**.
+
+**Đợt `measures-and-goals` (2026-08-11): xong.** Thêm ba số đo cơ thể (`chestCm`,
+`shoulderCm`, `armCm`) vào `BodyLog` và sáu trường mục tiêu (điểm xuất phát + bốn đích vòng
+cơ thể) vào `Goal`, xuyên suốt từ schema → API → hai form web (`web-today`, `web-settings`).
+Spec đầy đủ: `docs/superpowers/specs/2026-08-11-measures-and-goals-design.md`. Không tính %
+tiến độ (đợt `charts-mui`, chưa bắt đầu) và không đổi UI kit sang MUI (cũng đợt `charts-mui`).
 
 ## Liên quan
 

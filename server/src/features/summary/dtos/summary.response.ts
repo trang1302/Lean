@@ -12,6 +12,12 @@ export interface SummaryDay {
   weightMa7: number | null;
   waistCm: number | null;
   waistMa7: number | null;
+  chestCm: number | null;
+  chestMa7: number | null;
+  shoulderCm: number | null;
+  shoulderMa7: number | null;
+  armCm: number | null;
+  armMa7: number | null;
   /** Luôn là số — ngày không ghi bữa nào là 0, không phải `null`. */
   totalCalories: number;
   mealCount: number;
@@ -30,6 +36,10 @@ export interface SummaryWeek {
  * mình đang đứng ở đâu hôm nay.
  */
 export interface SummaryGoal {
+  /** Điểm xuất phát của % tiến độ. Đọc thẳng từ bảng, KHÔNG tính toán —
+   * công thức % thuộc đợt `charts-mui`. */
+  startWeightKg: number | null;
+  startDate: string | null;
   targetWeightKg: number | null;
   targetDate: string | null;
   dailyCalorieTarget: number | null;

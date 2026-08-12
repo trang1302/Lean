@@ -8,6 +8,13 @@
   flex: 1 1 160px;
 }
 
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .hint {
   margin-top: var(--space-2);
   font-size: var(--font-size-sm);

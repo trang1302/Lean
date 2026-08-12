@@ -1,10 +1,11 @@
 # Feature `web-settings` — Trang Cài đặt
 
-Trang 3 của web (`docs/archive/2026-08-06-original-design.md:301-306`). **Chưa có dòng code
-nào** — tài liệu này là hợp đồng để người sau implement, không phải mô tả code
-đang chạy.
+Trang 3 của web (`docs/archive/2026-08-06-original-design.md:301-306`). **Đã có code** —
+tài liệu này mô tả hành vi thật của `web/src/features/settings/` (khác với lúc mới viết,
+khi nó còn là hợp đồng định hướng cho người implement). Nơi tài liệu và code lệch nhau,
+code đúng — sửa tài liệu, đừng sửa code cho khớp tài liệu.
 
-Ràng buộc cứng: backend đã xong và đã khóa hợp đồng API (208 test pass). Mọi
+Ràng buộc cứng: backend đã xong và đã khóa hợp đồng API (239 test pass). Mọi
 endpoint dưới đây truy được về `docs/features/goal/SPEC.md` và
 `docs/features/reminders/SPEC.md`. **Không bịa thêm endpoint** — chỗ nào thiếu
 route thì ghi là bị chặn (§7), không tự thêm.
@@ -46,10 +47,29 @@ Query, **không** Jotai, **không** shadcn (`01-architecture.md:13`). HTTP đi q
 `web/src/lib/apiClient.ts` dùng chung — file này **chưa tồn tại**, xem `PLAN.md`
 §2.
 
-Trang này gọi **hai** nhóm endpoint và không gọi gì khác. Đặc biệt: **không gọi
-`GET /api/summary`**. Tiến độ mục tiêu (`remainingKg`, `onTrack`, `currentRate`)
-thuộc trang Biểu đồ; nhân nó sang đây là nhân bản công thức
-(`goal/SPEC.md` §7).
+Trang này gọi **hai** nhóm endpoint (`/goal`, `/reminders`) cho hai khối chính, cộng
+**một lệnh gọi phụ** tới `/summary` chỉ để điền sẵn một ô — xem phân biệt dưới đây.
+
+**Vẫn cấm tuyệt đối: hiển thị tiến độ mục tiêu ở trang này.** `remainingKg`, `onTrack`,
+`currentRateKgPerWeek` (`goal/SPEC.md` §7, `summary/SPEC.md` §2) thuộc trang Biểu đồ; tính
+hoặc hiển thị lại chúng ở đây là nhân bản công thức MA7/tiến độ ra hai chỗ — đúng điều
+`CLAUDE.md` cấm ("Mọi phép tính … nằm trong `stats` dưới dạng hàm thuần").
+
+**Được phép, và đang có từ Task 7:** `GoalSettingsSection` gọi `GET /summary?from=<hôm
+nay>&to=<hôm nay>` để đọc **đúng một giá trị** — `goal.currentMa7WeightKg` — điền sẵn ô
+"Cân nặng lúc bắt đầu" (`api/settings.api.ts`, hàm `fetchCurrentMa7WeightKg`). Đây **không**
+phải ngoại lệ của điều cấm trên, vì nó là một việc khác hẳn:
+
+| | Tiến độ mục tiêu (vẫn cấm) | Điền sẵn ô nhập (được phép) |
+|---|---|---|
+| Server tính gì | `remainingKg`/`onTrack`/`currentRate` — công thức so cân nặng hiện tại với mục tiêu | không tính gì thêm — `currentMa7WeightKg` là MA7 thô server đã tính sẵn cho việc khác |
+| Trang này tính lại gì | sẽ phải tính lại công thức tiến độ → nhân bản | không tính gì — chỉ đọc một số rồi `String()` vào input |
+| Hiển thị | một chỉ số tiến độ độc lập, đọc-để-xem | một bản nháp trong ô nhập, chỉ có hiệu lực khi bấm **Lưu** |
+| Vòng đời giá trị | sống ở trang Biểu đồ, luôn khớp DB | chỉ là gợi ý một lần (`prefilledRef`, xem GoalSettingsSection); người dùng gõ đè hay bấm Lưu thì giá trị trong DB mới là thật |
+
+Lý do gốc của điều cấm — *"nhân bản công thức ra hai chỗ là cách chắc chắn nhất để hai chỗ
+lệch nhau"* — **không bị vi phạm ở đây**: prefill *tiêu thụ* một số mà server đã tính sẵn,
+ngược hẳn với việc *tính lại* nó. Không có công thức thứ hai nào được viết ở trang này.
 
 ## 3. Nhóm 1 — Mục tiêu
 
@@ -57,31 +77,43 @@ Nguồn: `docs/features/goal/SPEC.md` §2, §6, §8.
 
 ### `GET /api/goal`
 
-Không tham số. **Luôn trả 200**, kể cả khi chưa đặt mục tiêu lần nào:
+Không tham số. **Luôn trả 200**, kể cả khi chưa đặt mục tiêu lần nào. Chín trường mục
+tiêu (thêm sáu ở đợt `measures-and-goals`) cộng `updatedAt`:
 
 ```jsonc
 {
-  "targetWeightKg": 68,           // number | null
-  "targetDate": "2026-12-31",     // string "YYYY-MM-DD" | null
-  "dailyCalorieTarget": 1900,     // number | null
+  "startWeightKg": 78,             // number | null — điểm xuất phát
+  "startDate": "2026-06-01",       // string "YYYY-MM-DD" | null
+  "targetWeightKg": 68,            // number | null
+  "targetWaistCm": 78,             // number | null
+  "targetChestCm": 96,             // number | null
+  "targetShoulderCm": 44,          // number | null
+  "targetArmCm": 28,               // number | null
+  "targetDate": "2026-12-31",      // string "YYYY-MM-DD" | null
+  "dailyCalorieTarget": 1900,      // number | null
   "updatedAt": "2026-08-07T10:22:31.000Z"  // string ISO | null
 }
 ```
 
 **Không có nhánh 404 để xử.** "Chưa đặt" là một trạng thái hợp lệ của tài nguyên
-singleton, không phải tài nguyên vắng mặt (`goal/SPEC.md` §3). UI chỉ render ba ô
-trống. Đừng viết `if (res.status === 404)`.
+singleton, không phải tài nguyên vắng mặt (`goal/SPEC.md` §3). UI chỉ render chín ô
+trống, chia hai nhóm (§3.1). Đừng viết `if (res.status === 404)`.
 
 `updatedAt` là trường **chỉ đọc** — chỉ dùng để hiện "Cập nhật lần cuối …", và là
-thứ duy nhất phân biệt "chưa từng đặt" với "đã đặt rồi xóa sạch cả ba trường"
+thứ duy nhất phân biệt "chưa từng đặt" với "đã đặt rồi xóa sạch cả chín trường"
 (`goal/SPEC.md` §8.1).
 
 ### `PUT /api/goal`
 
-Body, cả ba trường **optional + nullable**:
+Body, cả **chín** trường **optional + nullable**:
 
 ```jsonc
-{ "targetWeightKg": 68, "targetDate": "2026-12-31", "dailyCalorieTarget": 1900 }
+{
+  "startWeightKg": 78, "startDate": "2026-06-01",
+  "targetWeightKg": 68, "targetWaistCm": 78, "targetChestCm": 96,
+  "targetShoulderCm": 44, "targetArmCm": 28,
+  "targetDate": "2026-12-31", "dailyCalorieTarget": 1900
+}
 ```
 
 Trả `GoalResponse` (trạng thái sau khi ghi). Lỗi `400` khi Zod fail.
@@ -90,9 +122,18 @@ Ràng buộc (`goal/SPEC.md` §1):
 
 | Trường | Ràng buộc | Ghi chú cho UI |
 |---|---|---|
+| `startWeightKg` | `> 0` và `< 500` | khoảng **mở** hai đầu, giống `targetWeightKg` |
+| `startDate` | `"YYYY-MM-DD"`, ngày có thật, **KHÔNG được ở tương lai** | ngược hướng `targetDate` — xem bảng dưới |
 | `targetWeightKg` | `> 0` và `< 500` | khoảng **mở** hai đầu — `0` và `500` đều 400 |
+| `targetWaistCm`, `targetChestCm`, `targetShoulderCm`, `targetArmCm` | `> 0` và `< 300` | bốn trường dùng **chung một** ràng buộc (`circumferenceCmSchema`) |
 | `targetDate` | `"YYYY-MM-DD"`, ngày có thật, **cho phép tương lai** | khác mọi trường `date` khác của dự án; đừng chặn tương lai ở client |
 | `dailyCalorieTarget` | số nguyên `0…20 000` | trần này đang lỏng — xem §10 |
+
+**`startDate` và `targetDate` validate ngược hướng nhau, cùng trong một form** — chi tiết
+đầy đủ và lý do ở `goal/SPEC.md` §5. Code đang chạy (`GoalSettingsSection.tsx`) **không**
+đặt `max`/`min` ở client cho cả hai ô ngày — cả hai đều là `<input type="date">` trần, dựa
+hoàn toàn vào lỗi `400` của server để chặn: `startDate` ở tương lai → lỗi gắn `path:
+"startDate"`, `targetDate` thì không có ràng buộc hướng nào ở cả hai tầng.
 
 Ngữ nghĩa ba trạng thái của upsert (`goal/SPEC.md` §6):
 
@@ -120,6 +161,62 @@ spread object tự do.
 
 Ghi chú: `PUT {}` trên DB trắng vẫn tạo một hàng toàn `null` và trả 200
 (`goal/SPEC.md` §8.3) — không phải bug, đừng "sửa".
+
+### 3.1 Form: chín ô chia hai nhóm, nút Lưu riêng cho khối Mục tiêu
+
+`GoalSettingsSection.tsx` render chín ô nhập trên **hai nhóm**, không phải một lưới phẳng
+chín ô — một lưới phẳng không trả lời được câu hỏi "ô nào đi với ô nào":
+
+- **Điểm xuất phát** — `startWeightKg`, `startDate`.
+- **Đích đến** — `targetWeightKg`, `targetWaistCm`, `targetChestCm`, `targetShoulderCm`,
+  `targetArmCm`, `targetDate`, `dailyCalorieTarget`.
+
+Lưu **tay bằng một nút** cho cả chín ô cùng lúc (§10.3 đã chốt hướng này) — khác hẳn trang
+Hôm nay lưu tự động khi blur từng ô. Sáu ô số dùng chung component `NumberInput`, khai báo
+trong một mảng `NUMERIC_FIELDS` kèm nhãn + nhóm, lặp render bằng `.filter(group)`; hai ô
+ngày (`startDate`, `targetDate`) là `<input type="date">` riêng vì khác loại control, render
+bằng một hàm `renderDateField` gọi hai lần.
+
+`GoalSettingsSection` còn điền sẵn ô "Cân nặng lúc bắt đầu" từ `GET /summary` — xem §2 để
+phân biệt việc này với "hiển thị tiến độ mục tiêu" (vẫn cấm).
+
+### 3.2 Vì sao `handleSave` liệt kê tay chín dòng, không lặp qua danh sách trường
+
+```ts
+await save({
+  startWeightKg: numericInputToPatchValue(inputs.startWeightKg),
+  startDate: textInputToPatchValue(inputs.startDate),
+  targetWeightKg: numericInputToPatchValue(inputs.targetWeightKg),
+  targetWaistCm: numericInputToPatchValue(inputs.targetWaistCm),
+  targetChestCm: numericInputToPatchValue(inputs.targetChestCm),
+  targetShoulderCm: numericInputToPatchValue(inputs.targetShoulderCm),
+  targetArmCm: numericInputToPatchValue(inputs.targetArmCm),
+  targetDate: textInputToPatchValue(inputs.targetDate),
+  dailyCalorieTarget: numericInputToPatchValue(inputs.dailyCalorieTarget),
+});
+```
+
+Chín dòng gõ tay trông giống một chỗ đáng gọn thành `Object.fromEntries(KNOWN_FIELDS.map(...))`
+— nhưng **hai** trường ngày (`startDate`, `targetDate`) đi qua `textInputToPatchValue`
+(giữ chuỗi, chỉ đổi `''` → `null`) còn **sáu** trường số đi qua `numericInputToPatchValue`
+(parse `Number`, chặn `NaN`). Một vòng lặp chung sẽ phải rẽ nhánh theo loại trường — tức
+là vẫn cần biết trường nào thuộc nhóm nào, chỉ là giấu điều đó vào một điều kiện `if` giữa
+vòng lặp thay vì để lộ ra ở chữ ký gọi hàm.
+
+Chín dòng liệt kê tay đổi lại: **thêm một trường mục tiêu mới = thêm đúng một dòng ở đây,
+và quên dòng đó là lỗi TypeScript** — nhưng chỉ vì literal này được annotate bằng
+`Required<GoalPatch>`, không phải `GoalPatch` (mọi property của `GoalPatch` đều optional,
+nên gán một literal thiếu khoá vào chính `GoalPatch` compile sạch — đã kiểm bằng `tsc`
+thật). `settings.api.ts`'s `updateGoal` dùng cùng kiểu bảo đảm ở hop kế tiếp, qua một kiểu
+riêng `FullGoalPatch` (giữ nguyên khả năng giá trị là `undefined`, chỉ bắt buộc khoá phải
+có mặt). Không có annotate đó, quên dòng ở đây sẽ là một bug âm thầm chạy được nhưng thiếu
+mất một trường lúc runtime, chứ compiler không tự biết. Đánh đổi
+tương tự đã chọn ở `toGoalPatch`/`GOAL_PATCH_KEYS` phía server (`goal/SPEC.md` §6) và ở
+`useBodyLogForm`/`MEASURE_FIELDS` phía `today` (`web-today/SPEC.md` §5.1) — ở cả hai chỗ
+đó, việc lặp qua một mảng khóa (`GOAL_PATCH_KEYS`, `MEASURE_FIELDS`) là **an toàn** vì hai
+tầng đó chỉ copy giá trị nguyên trạng (`parsed[key] ?? null`), không rẽ nhánh loại trường.
+`handleSave` khác: nó phải áp **hai phép map khác nhau** tùy loại ô, nên rẽ nhánh tường minh
+theo tên trường an toàn hơn một vòng lặp có `if` ẩn bên trong.
 
 ## 4. Nhóm 2 — Nhắc nhở
 

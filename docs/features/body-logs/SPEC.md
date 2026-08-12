@@ -1,12 +1,13 @@
 # Feature `body-logs` — Đặc tả theo code thật
 
-> Tài liệu này mô tả **hành vi đang chạy**, đọc ngược từ code và 31 test đang pass.
+> Tài liệu này mô tả **hành vi đang chạy**, đọc ngược từ code và 44 test đang pass.
 > Khi code và `docs/archive/2026-08-06-original-design.md` §5 nói khác nhau, chỗ lệch được ghi rõ ở §8.
 
 ## 1. Feature làm gì
 
-`body-logs` là lớp lưu trữ **số đo cơ thể theo ngày**: cân nặng (`weightKg`), vòng bụng
-(`waistCm`) và một ghi chú tự do (`note`). Mỗi ngày lịch có tối đa **một** bản ghi.
+`body-logs` là lớp lưu trữ **số đo cơ thể theo ngày**: cân nặng (`weightKg`), bốn vòng
+— bụng (`waistCm`), ngực (`chestCm`), vai (`shoulderCm`), bắp tay (`armCm`) — và một ghi
+chú tự do (`note`). Mỗi ngày lịch có tối đa **một** bản ghi.
 
 Đây là nguồn dữ liệu gốc cho phần xu hướng của app: `summary` đọc bảng `BodyLog` để tính
 MA7, tốc độ thay đổi và tiến độ mục tiêu. Bản thân feature này **không tính toán gì** —
@@ -34,7 +35,7 @@ Mọi path dưới đây là tương đối với `/api/body-logs`.
 |---|---|---|---|---|
 | `GET` | `/?from=&to=` | Query `from`, `to` (bắt buộc, `YYYY-MM-DD`) | `200` — **mảng** `BodyLogResponse[]`, tăng dần theo `date`, rỗng nếu không có dữ liệu | `400` query sai |
 | `GET` | `/:date` | — | `200` — một `BodyLogResponse` | `400` date sai · `404` ngày chưa ghi |
-| `PUT` | `/:date` | JSON body `{ weightKg?, waistCm?, note? }`, mỗi trường nhận số/chuỗi hoặc `null` | `200` — `BodyLogResponse` sau khi ghi (cả khi tạo mới) | `400` date hoặc body sai |
+| `PUT` | `/:date` | JSON body `{ weightKg?, waistCm?, chestCm?, shoulderCm?, armCm?, note? }`, mỗi trường nhận số/chuỗi hoặc `null` | `200` — `BodyLogResponse` sau khi ghi (cả khi tạo mới) | `400` date hoặc body sai |
 | `DELETE` | `/:date` | — | `204`, **body rỗng** | `400` date sai · `404` ngày chưa ghi |
 
 Nguồn: `controllers/bodyLogs.controller.ts:23-42`.
@@ -46,6 +47,9 @@ Nguồn: `controllers/bodyLogs.controller.ts:23-42`.
   "date": "2026-08-06",        // chuỗi "YYYY-MM-DD", không phải Date
   "weightKg": 72.4,            // number | null
   "waistCm": 88,               // number | null
+  "chestCm": 96,                // number | null
+  "shoulderCm": 44,             // number | null
+  "armCm": 28.5,                // number | null
   "note": "ổn",                // string | null
   "createdAt": "2026-08-06T01:12:33.041Z",  // ISO 8601 — dấu thời gian THẬT
   "updatedAt": "2026-08-06T01:12:33.041Z"
@@ -70,7 +74,8 @@ Do `shared/errors/errorHandler.ts` sinh ra, không phải feature này:
 ```
 
 `path` trong `fields` là `issue.path.join('.')` (`errorHandler.ts:5-10`), nên lỗi ở
-`:date` cho `path: "date"`, lỗi ở body cho `path: "weightKg"` / `"waistCm"` / `"note"`.
+`:date` cho `path: "date"`, lỗi ở body cho `path: "weightKg"` / `"waistCm"` / `"chestCm"` /
+`"shoulderCm"` / `"armCm"` / `"note"`.
 
 ## 3. Ràng buộc validate đang chạy
 
@@ -89,14 +94,23 @@ khi chạm DB).
 
 ### Body của `PUT`
 
-`upsertBodyLogSchema` (`dtos/bodyLogs.request.ts:24-30`):
+`upsertBodyLogSchema` (`dtos/bodyLogs.request.ts:24-33`):
 
 | Trường | Ràng buộc | Nguồn |
 |---|---|---|
-| `weightKg` | `number`, `> 0`, `< 500`, hoặc `null` | `commonSchemas.ts:21` |
-| `waistCm` | `number`, `> 0`, `< 300`, hoặc `null` | `commonSchemas.ts:22` |
+| `weightKg` | `number`, `> 0`, `< 500`, hoặc `null` | `commonSchemas.ts:21` (`weightKgSchema`) |
+| `waistCm` | `number`, `> 0`, `< 300`, hoặc `null` | `commonSchemas.ts:30` (`circumferenceCmSchema`) |
+| `chestCm` | như `waistCm` | `commonSchemas.ts:30` |
+| `shoulderCm` | như `waistCm` | `commonSchemas.ts:30` |
+| `armCm` | như `waistCm` | `commonSchemas.ts:30` |
 | `note` | `string`, **trim**, tối đa **1000** ký tự, hoặc `null` | `dtos/bodyLogs.request.ts:10-11` |
 | trường lạ | **400** — `strictObject` | `dtos/bodyLogs.request.ts:25` |
+
+Bốn vòng dùng **chung đúng một schema** (`circumferenceCmSchema`, `commonSchemas.ts:22-30`)
+thay vì bốn schema gần-giống-nhau — có chủ ý: bốn schema riêng là bốn chỗ để lệch nhau về
+sau, và trần chung `< 300` đã đủ chặn ca gõ nhầm điển hình (`30` thành `3000`) mà không cần
+biết trước "vòng bắp tay tối đa hợp lý là bao nhiêu cm". Cái schema chung **không** chặn
+được ca gõ nhầm `30` thành `80` — không schema nào chặn được ca đó.
 
 Toàn bộ object là `.partial()` → mọi trường được phép vắng mặt, `{}` là body hợp lệ.
 
@@ -120,7 +134,7 @@ này khớp với "khoảng tối đa 730 ngày" ở spec khi đếm bao gồm h
 `?from=…&to=…&limit=10`) bị **bỏ qua im lặng**, không 400. Đây là điểm bất đối xứng có
 chủ ý so với body của `PUT`; xem §7.
 
-## 4. Ngữ nghĩa upsert 3 trạng thái của `PUT /:date`
+## 4. Ngữ nghĩa upsert 3 trạng thái của `PUT /:date`, sáu khóa
 
 Đây là phần khó nhất của feature, và là chỗ dễ regress nhất.
 
@@ -147,15 +161,24 @@ Nhưng phép so sánh theo giá trị không nói được điều gì về **s�
 `in`:
 
 ```ts
-// dtos/bodyLogs.request.ts:62-64
-if ('weightKg' in raw) patch.weightKg = parsed.weightKg ?? null;
-if ('waistCm'  in raw) patch.waistCm  = parsed.waistCm  ?? null;
-if ('note'     in raw) patch.note     = parsed.note     ?? null;
+// dtos/bodyLogs.request.ts:56, 71-84
+const PATCH_KEYS = ['weightKg', 'waistCm', 'chestCm', 'shoulderCm', 'armCm', 'note'] as const;
+
+for (const key of PATCH_KEYS) {
+  if (!(key in raw)) continue;
+  patch[key] = parsed[key] ?? null;
+}
 ```
 
 Comment tại `dtos/bodyLogs.request.ts:50-56` nêu rõ lý do: sau `.partial()` cả "vắng mặt"
 và "gửi `undefined`" đều ra `undefined`, nên **kiểm tra theo giá trị sẽ biến ca 2 thành
 ca 1** — người dùng bấm "xóa vòng bụng" và không có gì xảy ra.
+
+`PATCH_KEYS` là **nguồn sự thật duy nhất** cho danh sách khóa (`dtos/bodyLogs.request.ts:56`):
+trước khi có bốn vòng, mỗi khóa là một dòng `if` viết tay; với sáu khóa thì viết tay là sáu
+cơ hội quên một dòng, mà quên một dòng ở đây nghĩa là trường đó **không bao giờ lưu được**
+và không có lỗi nào báo. Thêm số đo mới = thêm vào mảng này, vào `upsertBodyLogSchema`
+(§3), và vào `BodyLogUpsertPatch`.
 
 Giá trị lấy từ `parsed` (đã qua trim với `note`), sự-có-mặt lấy từ `raw`. Hai nguồn khác
 nhau, cố ý.
@@ -329,7 +352,7 @@ Không có mục nào code **lỏng hơn** spec về mặt validate.
 ## 9. Tham chiếu
 
 - Code: `server/src/features/bodyLogs/`
-- Test: `server/test/features/bodyLogs/bodyLogs.controller.test.ts` (31 test)
+- Test: `server/test/features/bodyLogs/bodyLogs.controller.test.ts` (44 test)
 - Schema chung: `server/src/shared/validation/commonSchemas.ts`
 - Lỗi: `server/src/shared/errors/AppError.ts`, `errorHandler.ts`
 - Ngày tháng: `server/src/lib/time.ts` — TZ `Asia/Ho_Chi_Minh`

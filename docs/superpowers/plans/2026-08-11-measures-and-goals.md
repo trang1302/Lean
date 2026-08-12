@@ -25,7 +25,13 @@ thống kê không di chuyển: `shared/stats/` không sửa một dòng.
 - **KHÔNG đụng `server/data.db`.** Kể cả `npx prisma db push` — xem Task 0.
 - **`date` / `startDate` / `targetDate` luôn là chuỗi `"YYYY-MM-DD"`**, không bao giờ `DateTime`.
 - **KHÔNG sửa file nào trong `server/src/shared/stats/`.** Đang mở file ở đó = đã làm sai chỗ.
-- **KHÔNG đụng `web/src/features/charts/`.** Biểu đồ thuộc đợt 3.
+- **KHÔNG đụng `web/src/features/charts/`** — với MỘT ngoại lệ đã chốt (2026-08-11, sau khi
+  Task 4 phát hiện): được phép **thêm trường còn thiếu vào object literal trong file test**
+  của `charts/`. Chỉ vậy. Không đổi component, không đổi logic vẽ, không đổi cách tính.
+  Lý do: `chartData.ts` (file nguồn) vẫn biên dịch được vì `NullableDayKey` là tập con của
+  `SummaryDay` mở rộng — nhưng **fixture trong test của charts dựng `SummaryDay` đầy đủ**, nên
+  mở rộng hợp đồng API làm chúng đỏ. Đây là chi phí tối thiểu để `npm run build` chạy được sau
+  một thay đổi hợp đồng, khác hẳn việc thiết kế lại charts ở đợt 3. Xem Task 8 Bước 0.
 - Prisma client import từ `src/generated/prisma`, **không** từ `@prisma/client`.
 - Express 5 bắt lỗi async sẵn — không bọc try/catch để nuốt lỗi trong controller.
 - Indent 2 spaces, single quotes, có semicolon. Comment bằng tiếng Việt như code hiện có.
@@ -2175,6 +2181,32 @@ object `Goal` giả — sửa cho khớp.
 
 **Interfaces:** không sinh ra gì cho task sau — đây là task cuối.
 
+- [ ] **Bước 0: Vá fixture test đang đỏ (thêm vào sau khi Task 4 phát hiện)**
+
+Task 4 mở rộng `BodyLog`/`Goal`/`SummaryDay`/`SummaryGoal`, làm **18 lỗi typecheck** ở 10 file
+test — toàn bộ là object literal thiếu trường mới, **không có lỗi logic nào**. Phân bố đo được:
+
+```
+8 src/features/charts/components     5 src/features/today/components
+1 src/features/charts/utils          4 src/features/today/hooks
+```
+
+Tasks 5–7 vá phần `today/`. Bước này vá phần còn lại. Với mỗi fixture đỏ, thêm các trường thiếu
+với giá trị `null`:
+
+- literal `SummaryDay` → thêm `chestCm`, `chestMa7`, `shoulderCm`, `shoulderMa7`, `armCm`, `armMa7`
+- literal `SummaryGoal` → thêm `startWeightKg`, `startDate`
+- literal `Goal` → thêm `startWeightKg`, `startDate`, `targetWaistCm`, `targetChestCm`,
+  `targetShoulderCm`, `targetArmCm`
+- literal `BodyLog` → thêm `chestCm`, `shoulderCm`, `armCm`
+
+**Chỉ thêm trường vào fixture. TUYỆT ĐỐI không** đổi component biểu đồ, logic vẽ, hay một
+assertion nào. Nếu một test bắt đầu fail vì lý do khác việc thiếu trường, **dừng và báo** —
+đó là dấu hiệu thay đổi hợp đồng đã làm vỡ hành vi thật, không phải chỉ vỡ kiểu.
+
+Chạy: `cd web && npx tsc -p tsconfig.json --noEmit`
+Kỳ vọng: 0 lỗi.
+
 - [ ] **Bước 1: Chạy toàn bộ test và typecheck cả hai bên**
 
 ```bash
@@ -2227,7 +2259,28 @@ Với mỗi file, sửa để mô tả **hành vi thật của code sau đợt n
 | `docs/features/goal/SPEC.md` | 9 trường; `startDate` dùng `pastOrTodayDateString` còn `targetDate` dùng `dateString` — nêu rõ vì sao khác nhau |
 | `docs/features/summary/SPEC.md` | `SummaryDay` 5 cặp số đo; `SummaryGoal` thêm `startWeightKg`/`startDate` |
 | `docs/features/web-today/SPEC.md` | Form 5 ô; API mới của `useBodyLogForm` (`values`/`onChange`/`onBlur`) |
-| `docs/features/web-settings/SPEC.md` | Form 9 ô chia hai nhóm; vì sao `handleSave` liệt kê tay 9 dòng thay vì lặp |
+| `docs/features/web-settings/SPEC.md` | Form 9 ô chia hai nhóm; vì sao `handleSave` liệt kê tay 9 dòng thay vì lặp. **VÀ sửa §2** — xem dưới |
+| `web/src/features/settings/components/SettingsPage.tsx` | **Chỉ comment đầu file** — xem dưới |
+
+**Sửa §2 của `web-settings/SPEC.md` và comment đầu `SettingsPage.tsx`** (phát sinh ở Task 7,
+chủ dự án chốt 2026-08-11). Hai chỗ đó đang khẳng định trang Cài đặt **không gọi**
+`GET /api/summary`. Từ Task 7 thì có gọi — `GoalSettingsSection` đọc `goal.currentMa7WeightKg`
+để điền sẵn ô "Cân nặng lúc bắt đầu".
+
+Sửa theo hướng **phân biệt hai việc khác nhau**, KHÔNG phải bỏ điều cấm:
+
+- **Vẫn cấm:** hiển thị tiến độ mục tiêu (`remainingKg`, `onTrack`, `currentRate`) ở trang Cài
+  đặt. Đó là việc của trang Biểu đồ; kéo sang đây là nhân bản công thức.
+- **Được phép:** đọc **một giá trị** từ `/summary` để điền sẵn một ô nhập. Không tính toán gì,
+  không hiển thị tiến độ, và giá trị điền sẵn chỉ là bản nháp cho tới khi người dùng bấm Lưu.
+
+Lý do gốc của điều cấm — "đừng nhân bản công thức" — **không bị vi phạm**: prefill tiêu thụ một
+số mà server đã tính, ngược hẳn với việc tính lại. Câu chữ cũ cấm tuyệt đối nên phải nới cho
+khớp hành vi thật, thay vì để tài liệu nói dối (`docs/README.md`: code và tài liệu lệch nhau thì
+code đúng).
+
+Test `'trang KHÔNG gọi GET /api/summary…'` trong `SettingsPage.test.tsx` đã được Task 7 đổi tên
+và ghi comment cho khớp — **không sửa lại nữa**, chỉ kiểm rằng nó còn nói đúng sự thật.
 
 - [ ] **Bước 6: Cập nhật bảng trạng thái trong `docs/README.md`**
 

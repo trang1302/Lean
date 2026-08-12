@@ -9,6 +9,8 @@ import { GoalProgressCard } from './GoalProgressCard';
 
 function goal(overrides: Partial<SummaryGoal> = {}): SummaryGoal {
   return {
+    startWeightKg: null,
+    startDate: null,
     targetWeightKg: null,
     targetDate: null,
     dailyCalorieTarget: null,

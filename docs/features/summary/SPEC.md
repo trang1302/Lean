@@ -40,8 +40,18 @@ Controller (`controllers/summary.controller.ts:11-14`) không có `try/catch`: E
 | `weightMa7` | `number \| null` | `null` khi cửa sổ MA7 có dưới 2 giá trị |
 | `waistCm` | `number \| null` | như `weightKg` |
 | `waistMa7` | `number \| null` | như `weightMa7` |
+| `chestCm` | `number \| null` | như `weightKg` |
+| `chestMa7` | `number \| null` | như `weightMa7` |
+| `shoulderCm` | `number \| null` | như `weightKg` |
+| `shoulderMa7` | `number \| null` | như `weightMa7` |
+| `armCm` | `number \| null` | như `weightKg` |
+| `armMa7` | `number \| null` | như `weightMa7` |
 | `totalCalories` | `number` | **không bao giờ `null`** — ngày không ghi bữa nào là `0` |
 | `mealCount` | `number` | `0` khi không ghi bữa nào |
+
+Năm cặp số đo (`weightKg`/`weightMa7` … `armCm`/`armMa7`) đều đi qua **cùng một** hàm thuần
+`movingAverage7` — mỗi cặp là một lần gọi riêng với mảng `DatedValue[]` của đúng số đo đó
+(`summary.service.ts`), không có công thức MA7 thứ hai nào viết riêng cho bốn vòng mới.
 
 `totalCalories`/`mealCount` mặc định 0 tại `summary.service.ts:90-91`; test `summary.controller.test.ts:176-185`.
 
@@ -61,6 +71,8 @@ Là **object**, không phải mảng, và không bao giờ `null` — chưa đ�
 
 | Trường | Kiểu | `null` khi nào |
 |---|---|---|
+| `startWeightKg` | `number \| null` | chưa đặt mục tiêu, hoặc đặt mà bỏ trống trường này. Đọc thẳng từ `Goal`, **không tính toán gì** — công thức % tiến độ thuộc đợt `charts-mui` |
+| `startDate` | `string \| null` | như trên |
 | `targetWeightKg` | `number \| null` | chưa đặt mục tiêu, hoặc đặt mà bỏ trống trường này |
 | `targetDate` | `string \| null` | như trên |
 | `dailyCalorieTarget` | `number \| null` | như trên |

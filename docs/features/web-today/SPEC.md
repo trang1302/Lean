@@ -1,8 +1,9 @@
 # Trang `web-today` — "Hôm nay"
 
-> **Trạng thái: chưa có code.** Tài liệu này là *đặc tả định hướng* cho người implement,
-> không phải mô tả hành vi đang chạy. Khác hẳn `docs/features/{body-logs,meals,summary}/SPEC.md`
-> — những file đó đọc ngược từ code thật và là **ràng buộc cứng** với trang này.
+> **Trạng thái: đã có code.** Tài liệu này mô tả hành vi thật của
+> `web/src/features/today/` (khác với lúc mới viết, khi nó còn là *đặc tả định hướng* cho
+> người implement). Cùng nguyên tắc với `docs/features/{body-logs,meals,summary}/SPEC.md`
+> — nơi tài liệu và code lệch nhau, code đúng.
 
 Liên quan: [`PLAN.md`](PLAN.md) (kế hoạch thi công) ·
 [`docs/archive/2026-08-06-original-design.md`](../../archive/2026-08-06-original-design.md) §7 (nguồn của bố cục) ·
@@ -30,7 +31,7 @@ Những thứ đó neo vào `shared/stats/` của server và hiển thị ở tr
 
 ## 2. Hợp đồng API
 
-Backend đã xong (208 test pass). Mọi endpoint dưới đây đều truy được về SPEC của feature tương ứng.
+Backend đã xong (239 test pass). Mọi endpoint dưới đây đều truy được về SPEC của feature tương ứng.
 **Không có endpoint nào khác được phép gọi từ trang này, và không được bịa thêm.**
 
 | # | Gọi | Khi nào | Nguồn hợp đồng |
@@ -51,21 +52,26 @@ song song, không xếp hàng.
 `200` → `BodyLogResponse`; **`404` khi ngày đó chưa ghi gì** — xem §6, đây là bẫy chính.
 
 ```jsonc
-{ "date": "2026-08-06", "weightKg": 72.4, "waistCm": 88, "note": "ổn",
+{ "date": "2026-08-06", "weightKg": 72.4, "waistCm": 88, "chestCm": 96, "shoulderCm": 44,
+  "armCm": 28.5, "note": "ổn",
   "createdAt": "2026-08-06T01:12:33.041Z", "updatedAt": "2026-08-06T01:12:33.041Z" }
 ```
 
-`weightKg`, `waistCm`, `note` đều `number|string | null`. Không có `userId` (body-logs §6.3).
+Năm số đo (`weightKg`, `waistCm`, `chestCm`, `shoulderCm`, `armCm`) và `note` đều
+`number|string | null`. Không có `userId` (body-logs §6.3).
 
 ### 2.2 `PUT /api/body-logs/:date`
 
-Body `{ weightKg?, waistCm?, note? }`, mỗi trường nhận giá trị **hoặc `null`**, mọi trường
-được phép vắng mặt. Trả `200` + `BodyLogResponse` sau khi ghi — **cả khi tạo mới**, không
-`201`. Ngữ nghĩa 3 trạng thái ở §5.1; hình phạt cho trường lạ ở §5.2.
+Body `{ weightKg?, waistCm?, chestCm?, shoulderCm?, armCm?, note? }`, mỗi trường nhận giá
+trị **hoặc `null`**, mọi trường được phép vắng mặt. Trả `200` + `BodyLogResponse` sau khi
+ghi — **cả khi tạo mới**, không `201`. Ngữ nghĩa 3 trạng thái ở §5.1; hình phạt cho trường
+lạ ở §5.2.
 
-Ràng buộc đang chạy (body-logs §3): `weightKg` ∈ (0, 500) **mở hai đầu** · `waistCm` ∈ (0, 300)
-mở hai đầu · `note` trim, ≤ 1000 ký tự · `:date` phải là ngày có thật và **không ở tương lai**
-(so theo `Asia/Ho_Chi_Minh`). Kiểu **strict**: `weightKg: "72.4"` là `400`, Zod không ép kiểu.
+Ràng buộc đang chạy (body-logs §3): `weightKg` ∈ (0, 500) **mở hai đầu** · `waistCm`,
+`chestCm`, `shoulderCm`, `armCm` ∈ (0, 300) mở hai đầu, dùng **chung một** schema
+(`circumferenceCmSchema`) · `note` trim, ≤ 1000 ký tự · `:date` phải là ngày có thật và
+**không ở tương lai** (so theo `Asia/Ho_Chi_Minh`). Kiểu **strict**: `weightKg: "72.4"` là
+`400`, Zod không ép kiểu.
 
 ### 2.3 `GET /api/meals?date=`
 
@@ -154,7 +160,9 @@ Từ §7, từ trên xuống. Mỗi khối là một component riêng (xem `PLAN
 │ Ngày:  [ 2026-08-06 ▾ ]   (max = hôm nay)    │  ← DatePicker
 ├──────────────────────────────────────────────┤
 │ Số đo                                        │  ← BodyLogForm
-│  Cân nặng (kg) [ 72.4 ]  Vòng bụng (cm) [ 88 ]│
+│  Cân nặng (kg) [ 72.4 ]                      │
+│  Vòng bụng [88] Vòng ngực [96] Vòng vai [44]  │
+│  Vòng bắp tay [28.5]                          │
 │  Để trống rồi rời ô để xóa giá trị.  Đã lưu ✓ │
 ├──────────────────────────────────────────────┤
 │ Bữa ăn                                       │  ← MealList
@@ -173,8 +181,12 @@ Ràng buộc từng khối:
 
 - **DatePicker** — `<input type="date">`, `max` = hôm nay tính ở client. Mặc định hôm nay.
   Đổi ngày → nạp lại (1) và (3); **không** nạp lại (7), mục tiêu không phụ thuộc ngày.
-- **BodyLogForm** — hai ô số, `step="0.1"`. Ghi bằng `PUT` khi **blur**, không có nút Lưu.
-  Mỗi ô ghi độc lập, mỗi lần blur là một request mang **đúng một khóa** (§5.1).
+- **BodyLogForm** — năm ô số (cân nặng, đứng riêng một hàng; bốn vòng — bụng, ngực, vai,
+  bắp tay — xếp lưới bên dưới), `step="0.1"`. Ghi bằng `PUT` khi **blur**, không có nút Lưu.
+  Mỗi ô ghi độc lập, mỗi lần blur là một request mang **đúng một khóa** (§5.1). Danh sách
+  năm trường không hard-code rải rác trong component — một nguồn duy nhất ở
+  `web/src/constants/measures.ts` (`MEASURES`), dùng chung cho cả nhãn hiển thị và vòng lặp
+  render ô.
 - **MealList** — nhóm theo buổi. Buổi rỗng: xem §6. Mỗi dòng có `sửa` và `xóa`.
 - **MealQuickAddForm** — `[buổi ▾][tên món][calo][+]`. Sau khi `201`, xóa trắng `tên món`
   và `calo`, **giữ nguyên `buổi`** (người dùng thường nhập liền hai món cùng buổi), focus
@@ -218,8 +230,10 @@ dùng không chạm vào ô đó và cũng không được cảnh báo.
 **Cách đúng:** *một lần blur = một request mang đúng khóa của ô vừa blur.*
 
 ```ts
-// ✔ ô nào blur thì chỉ gửi khóa của ô đó
-async function saveField(field: 'weightKg' | 'waistCm', raw: string) {
+// ✔ ô nào blur thì chỉ gửi khóa của ô đó — MEASURE_FIELD là một trong năm
+// tên trường của MEASURES (constants/measures.ts), không chỉ hai như ví dụ
+// ❌ ở trên
+async function saveField(field: MeasureField, raw: string) {
   const value = raw.trim() === '' ? null : Number(raw);
   await putBodyLog(date, { [field]: value });   // đúng MỘT khóa trong body
 }
@@ -237,6 +251,35 @@ Kèm hai quy tắc phụ:
 
 Nói cách khác: state của form phải mang thêm khái niệm **"ô này đã bị người dùng động
 vào chưa"**. Đây là điểm khác biệt duy nhất giữa một form đúng và một form ăn mất dữ liệu.
+
+#### API thật của `useBodyLogForm` — bản đồ theo khóa, không phải năm biến song song
+
+Code đã chạy (`web/src/features/today/hooks/useBodyLogForm.ts`) hiện thực đúng nguyên tắc
+trên, nhưng gói cả năm ô vào **một hook** với hình dạng sau, thay vì năm cặp
+`[value, setValue]` viết tay:
+
+```ts
+interface UseBodyLogFormResult {
+  values: Record<MeasureField, string>;      // giá trị đang gõ, khóa theo tên trường
+  onChange: (field: MeasureField, value: string) => void;
+  onBlur: (field: MeasureField) => void;      // chạy đủ 4 luật ở trên cho ĐÚNG một field
+  savedField: MeasureField | null;            // trường vừa lưu thành công — chỉ để hiện "Đã lưu ✓"
+  attemptTick: number;                        // tăng sau mỗi lần blur hoàn tất, để trang tự
+                                               // đưa focus về ô lỗi đầu tiên
+  fieldErrors: UseFieldErrorsResult;
+}
+```
+
+**Vì sao bản đồ theo khóa (`Record<MeasureField, T>`) thay vì biến riêng cho từng ô:** với
+hai ô, `weightValue`/`waistValue`/`loadedWeight`/`loadedWaist`/`touchedWeight`/`touchedWaist`
+còn đọc được. Với năm ô đó là mười lăm khai báo song song — và mười lăm cơ hội gõ nhầm tên
+biến giữa `weight` và `weightKg`. `MEASURE_FIELDS` (từ `constants/measures.ts`, xem §4) là
+nguồn liệt kê trường **duy nhất**; ba mảnh state nội bộ của hook (giá trị đang gõ, giá trị
+đã nạp, cờ "đã động vào") đều dựng bằng cách lặp qua nó, không viết tay từng trường.
+
+`BodyLogForm` (component gọi hook) không biết gì về ngữ nghĩa 3 trạng thái hay so sánh
+"đã đổi chưa" — nó chỉ lặp qua `MEASURES` để render `NumberInput`, gọi
+`form.onChange`/`form.onBlur` với đúng `field`, và đọc lỗi từ `fieldErrors.fieldErrors[field]`.
 
 ### 5.2 `400` kèm `fields[]` — gắn lỗi vào đúng ô, không đổ toast chung
 

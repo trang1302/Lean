@@ -8,6 +8,9 @@ export interface BodyLogResponse {
   date: string;
   weightKg: number | null;
   waistCm: number | null;
+  chestCm: number | null;
+  shoulderCm: number | null;
+  armCm: number | null;
   note: string | null;
   /** ISO 8601 — đây là dấu thời gian thật, khác hẳn `date`. */
   createdAt: string;

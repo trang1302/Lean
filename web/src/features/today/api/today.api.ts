@@ -15,7 +15,9 @@ import type { BodyLog, Goal, Meal, MealSlot } from '../../../types/api';
  * được, không tự bù trường thiếu, không tự lọc `null` — chỗ này là nơi hợp
  * đồng 3 trạng thái sống hoặc chết (PLAN §4 bước 1).
  */
-export type BodyLogPatch = Partial<Record<'weightKg' | 'waistCm' | 'note', number | string | null>>;
+export type BodyLogPatch = Partial<
+  Record<'weightKg' | 'waistCm' | 'chestCm' | 'shoulderCm' | 'armCm' | 'note', number | string | null>
+>;
 
 /** `GET /api/body-logs/:date` — `404` (ngày chưa ghi) dịch thành `null`,
  * KHÔNG ném lỗi (SPEC §6: đây là trạng thái bình thường). Lỗi khác vẫn ném. */

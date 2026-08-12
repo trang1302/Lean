@@ -19,7 +19,15 @@ export const pastOrTodayDateString = dateString.refine((value) => value <= today
 
 /** Ràng buộc số đo, spec §5. */
 export const weightKgSchema = z.number().positive().lt(500);
-export const waistCmSchema = z.number().positive().lt(300);
+/**
+ * Dùng chung cho CẢ BỐN vòng: bụng, ngực, vai, bắp tay.
+ *
+ * Cố ý KHÔNG siết trần riêng cho từng vòng (bắp tay ~30cm, ngực ~98cm): trần
+ * chung `lt(300)` vẫn chặn được ca gõ nhầm 30 thành 3000, còn ca gõ nhầm 30
+ * thành 80 thì không schema nào cứu được. Bốn schema gần-giống-nhau là bốn chỗ
+ * để lệch nhau về sau.
+ */
+export const circumferenceCmSchema = z.number().positive().lt(300);
 export const caloriesSchema = z.number().int().min(0).max(20_000);
 export const mealNameSchema = z.string().trim().min(1).max(200);
 export const slotSchema = z.enum(['breakfast', 'lunch', 'dinner', 'snack']);

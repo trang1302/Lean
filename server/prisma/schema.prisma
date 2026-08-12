@@ -23,13 +23,16 @@ datasource db {
 }
 
 model BodyLog {
-  userId    String
-  date      String
-  weightKg  Float?
-  waistCm   Float?
-  note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId     String
+  date       String
+  weightKg   Float?
+  waistCm    Float?
+  chestCm    Float?
+  shoulderCm Float?
+  armCm      Float?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@id([userId, date])
 }
@@ -50,7 +53,13 @@ model Meal {
 
 model Goal {
   userId             String   @id
+  startWeightKg      Float?
+  startDate          String?
   targetWeightKg     Float?
+  targetWaistCm      Float?
+  targetChestCm      Float?
+  targetShoulderCm   Float?
+  targetArmCm        Float?
   targetDate         String?
   dailyCalorieTarget Int?
   updatedAt          DateTime @updatedAt

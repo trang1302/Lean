@@ -19,6 +19,9 @@ function makeBodyLog(overrides: Partial<BodyLog> = {}): BodyLog {
     date: '2026-08-07',
     weightKg: null,
     waistCm: null,
+    chestCm: null,
+    shoulderCm: null,
+    armCm: null,
     note: null,
     createdAt: '2026-08-07T00:00:00.000Z',
     updatedAt: '2026-08-07T00:00:00.000Z',
@@ -75,5 +78,31 @@ describe('BodyLogForm — "Đã lưu" hiện sau khi blur thành công', () => {
     await user.tab();
 
     await waitFor(() => expect(screen.getByText(/Đã lưu/)).toBeTruthy());
+  });
+});
+
+describe('BodyLogForm — năm ô số đo', () => {
+  it('render đủ 5 ô với nhãn kèm đơn vị', () => {
+    render(<BodyLogForm date="2026-08-07" bodyLog={null} isLoading={false} />);
+
+    expect(screen.getByLabelText('Cân nặng (kg)')).toBeDefined();
+    expect(screen.getByLabelText('Vòng bụng (cm)')).toBeDefined();
+    expect(screen.getByLabelText('Vòng ngực (cm)')).toBeDefined();
+    expect(screen.getByLabelText('Vòng vai (cm)')).toBeDefined();
+    expect(screen.getByLabelText('Vòng bắp tay (cm)')).toBeDefined();
+  });
+
+  it('cả 5 ô bị disable khi đang tải', () => {
+    render(<BodyLogForm date="2026-08-07" bodyLog={null} isLoading={true} />);
+
+    for (const label of [
+      'Cân nặng (kg)',
+      'Vòng bụng (cm)',
+      'Vòng ngực (cm)',
+      'Vòng vai (cm)',
+      'Vòng bắp tay (cm)',
+    ]) {
+      expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(true);
+    }
   });
 });

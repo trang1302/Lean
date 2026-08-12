@@ -7,7 +7,13 @@ import { SettingsPage } from './SettingsPage';
 import type { ReminderView } from '../api/settings.types';
 
 const EMPTY_GOAL = {
+  startWeightKg: null,
+  startDate: null,
   targetWeightKg: null,
+  targetWaistCm: null,
+  targetChestCm: null,
+  targetShoulderCm: null,
+  targetArmCm: null,
   targetDate: null,
   dailyCalorieTarget: null,
   updatedAt: null,
@@ -26,12 +32,19 @@ function mockLoads(goal: unknown = EMPTY_GOAL, reminders: unknown = DEFAULT_REMI
   vi.spyOn(apiClient, 'get').mockImplementation((path: string) => {
     if (path === '/goal') return Promise.resolve(goal);
     if (path === '/reminders') return Promise.resolve(reminders);
+    // `GoalSettingsSection` (Task 7) gọi `/summary` riêng để điền sẵn "cân
+    // đầu" — không liên quan tới việc trang này có hiển thị tiến độ mục
+    // tiêu hay không (đó vẫn là việc của trang Biểu đồ, xem test SPEC §2
+    // dưới đây). Trả một response rỗng hợp lệ để không chặn các test khác.
+    if (path.startsWith('/summary')) {
+      return Promise.resolve({ days: [], weeks: [], goal: { currentMa7WeightKg: null } });
+    }
     return Promise.reject(new Error(`unexpected path in test: ${path}`));
   });
 }
 
 describe('SettingsPage — trang trắng (chưa từng đặt gì), không có lỗi 404 nào (SPEC §3)', () => {
-  it('render 3 ô Mục tiêu trống và 2 thẻ Nhắc nhở mặc định', async () => {
+  it('render 9 ô Mục tiêu trống (hai nhóm) và 2 thẻ Nhắc nhở mặc định', async () => {
     mockLoads();
     render(<SettingsPage />);
 
@@ -54,24 +67,35 @@ describe('SettingsPage — trang trắng (chưa từng đặt gì), không có l
     );
   });
 
-  it('trang KHÔNG gọi GET /api/summary (SPEC §2 — tiến độ mục tiêu là việc của trang Biểu đồ)', async () => {
-    const getSpy = vi.spyOn(apiClient, 'get').mockImplementation((path: string) => {
-      if (path === '/goal') return Promise.resolve(EMPTY_GOAL);
-      if (path === '/reminders') return Promise.resolve(DEFAULT_REMINDERS);
-      return Promise.reject(new Error(`unexpected path: ${path}`));
-    });
+  it('trang KHÔNG hiển thị tiến độ mục tiêu — đó TUYỆT ĐỐI là việc của trang Biểu đồ (SPEC §2)', async () => {
+    // LƯU Ý (Task 7): `GoalSettingsSection` gọi `/summary?from=...&to=...` để
+    // điền sẵn "cân đầu" (spec goal §5.4) — một mục đích khác hẳn "hiển thị
+    // tiến độ mục tiêu" mà ranh giới SPEC §2 nói tới. Vì path giờ có query
+    // string, so khớp tuyệt đối với chuỗi `/summary` không còn nói lên được
+    // gì (review cuối cùng chỉ ra: assertion cũ pass chỉ vì so khớp tình cờ).
+    // Ranh giới thật là RENDER, không phải REQUEST — assert trực tiếp trên
+    // đó: không chỉ báo tiến độ nào của `GoalProgressCard` (nhãn "Còn lại",
+    // badge "(Chưa) đúng tiến độ", đơn vị "kg/tuần") được phép lọt vào trang
+    // Cài đặt.
+    mockLoads();
     render(<SettingsPage />);
 
     await waitFor(() => expect(screen.getByLabelText('Cân nặng đích (kg)')).toBeTruthy());
 
-    expect(getSpy.mock.calls.map((c) => c[0])).not.toContain('/summary');
+    expect(screen.queryByText(/còn lại|đúng tiến độ|kg\/tuần/i)).toBeNull();
   });
 });
 
 describe('SettingsPage — mục tiêu đã có dữ liệu', () => {
   it('hiện đúng giá trị đã lưu và updatedAt định dạng theo giờ VN, không phải chuỗi ISO thô', async () => {
     mockLoads({
+      startWeightKg: null,
+      startDate: null,
       targetWeightKg: 68,
+      targetWaistCm: null,
+      targetChestCm: null,
+      targetShoulderCm: null,
+      targetArmCm: null,
       targetDate: '2026-12-31',
       dailyCalorieTarget: 1900,
       updatedAt: '2026-08-07T10:22:31.000Z',
@@ -108,6 +132,9 @@ describe('SettingsPage — lỗi mạng cấp trang (Bước 7)', () => {
       .mockImplementation((path: string) => {
         if (path === '/goal') return Promise.resolve(EMPTY_GOAL);
         if (path === '/reminders') return Promise.resolve(DEFAULT_REMINDERS);
+        if (path.startsWith('/summary')) {
+          return Promise.resolve({ days: [], weeks: [], goal: { currentMa7WeightKg: null } });
+        }
         return Promise.reject(new Error('unexpected'));
       });
 

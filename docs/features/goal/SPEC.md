@@ -2,19 +2,31 @@
 
 Tài liệu này mô tả **hành vi thật của code đã chạy**, không phải ý định trong spec gốc.
 Mọi khẳng định đều dẫn `đường-dẫn:dòng`. Nguồn chân lý là `server/src/features/goal/`
-và `server/test/features/goal/goal.controller.test.ts` (18 test, đang pass).
+và `server/test/features/goal/goal.controller.test.ts` (25 test, đang pass).
 
 ## 1. Feature này làm gì
 
-Lưu và đọc **một mục tiêu duy nhất** của người dùng cục bộ, gồm ba trường tùy chọn:
+Lưu và đọc **một mục tiêu duy nhất** của người dùng cục bộ, gồm chín trường tùy chọn —
+ba của bản đầu cộng sáu trường thêm ở đợt `measures-and-goals` (điểm xuất phát và bốn
+đích vòng cơ thể):
 
 | Trường | Kiểu | Ràng buộc | Nguồn |
 |---|---|---|---|
-| `targetWeightKg` | `Float?` | `> 0` và `< 500` (khoảng mở hai đầu) | `server/src/shared/validation/commonSchemas.ts:21` |
-| `targetDate` | `String?` | `"YYYY-MM-DD"` và là ngày có thật; **cho phép tương lai** | `server/src/shared/validation/commonSchemas.ts:8-10` |
-| `dailyCalorieTarget` | `Int?` | số nguyên, `0 … 20 000` | `server/src/shared/validation/commonSchemas.ts:23` |
+| `startWeightKg` | `Float?` | `> 0` và `< 500` (khoảng mở hai đầu) | `commonSchemas.ts:21` (`weightKgSchema`) |
+| `startDate` | `String?` | `"YYYY-MM-DD"`, là ngày có thật, **không được ở tương lai** | `commonSchemas.ts:16-18` (`pastOrTodayDateString`) |
+| `targetWeightKg` | `Float?` | `> 0` và `< 500` (khoảng mở hai đầu) | `commonSchemas.ts:21` |
+| `targetWaistCm` | `Float?` | `> 0` và `< 300` (khoảng mở hai đầu) | `commonSchemas.ts:30` (`circumferenceCmSchema`) |
+| `targetChestCm` | `Float?` | như `targetWaistCm` | `commonSchemas.ts:30` |
+| `targetShoulderCm` | `Float?` | như `targetWaistCm` | `commonSchemas.ts:30` |
+| `targetArmCm` | `Float?` | như `targetWaistCm` | `commonSchemas.ts:30` |
+| `targetDate` | `String?` | `"YYYY-MM-DD"` và là ngày có thật; **cho phép tương lai** | `commonSchemas.ts:8-10` (`dateString`) |
+| `dailyCalorieTarget` | `Int?` | số nguyên, `0 … 20 000` | `commonSchemas.ts:23` |
 
-Feature chỉ làm CRUD. **Không tính toán thống kê** — xem §7.
+`startDate` và `targetDate` validate **ngược hướng nhau có chủ đích** — xem §5, phần đã
+mở rộng cho trường mới.
+
+Feature chỉ làm CRUD. **Không tính toán thống kê, không tính % tiến độ.** `startWeightKg`/
+`startDate` chỉ được lưu và trả ra nguyên trạng — công thức % thuộc đợt `charts-mui`, xem §7.
 
 Router cắm tại prefix `/api/goal` (`server/src/app.ts:23`), path bên trong là tương đối
 (`server/src/features/goal/index.ts:5-7`).
@@ -32,30 +44,42 @@ Bốn lớp, ranh giới giữ nghiêm:
 | Method | Path | Request | Response 200 | Lỗi |
 |---|---|---|---|---|
 | `GET` | `/api/goal` | không có tham số | `GoalResponse` | không có — luôn 200 |
-| `PUT` | `/api/goal` | body JSON, cả ba trường optional + nullable | `GoalResponse` (trạng thái sau khi ghi) | `400` khi Zod fail |
+| `PUT` | `/api/goal` | body JSON, cả chín trường optional + nullable | `GoalResponse` (trạng thái sau khi ghi) | `400` khi Zod fail |
 
 ### `GoalResponse`
 
-`server/src/features/goal/dtos/goal.response.ts:9-15`
+`server/src/features/goal/dtos/goal.response.ts:15-27`
 
 ```jsonc
 {
-  "targetWeightKg": 68,            // number | null
-  "targetDate": "2099-12-31",      // string | null
-  "dailyCalorieTarget": 1900,      // number | null
-  "updatedAt": "2026-08-07T…Z"     // string | null  ← xem §5.1
+  "startWeightKg": 78,          // number | null
+  "startDate": "2026-06-01",    // string | null
+  "targetWeightKg": 68,         // number | null
+  "targetWaistCm": 78,          // number | null
+  "targetChestCm": 96,          // number | null
+  "targetShoulderCm": 44,       // number | null
+  "targetArmCm": 28,            // number | null
+  "targetDate": "2099-12-31",   // string | null
+  "dailyCalorieTarget": 1900,   // number | null
+  "updatedAt": "2026-08-07T…Z"  // string | null  ← xem §5.1
 }
 ```
 
 ### `PUT` request body
 
-`server/src/features/goal/dtos/goal.request.ts:20-26`
+`server/src/features/goal/dtos/goal.request.ts:24-36`
 
 ```jsonc
 {
-  "targetWeightKg": 68,            // number | null, có thể vắng mặt
-  "targetDate": "2099-12-31",      // string | null, có thể vắng mặt
-  "dailyCalorieTarget": 1900       // number | null, có thể vắng mặt
+  "startWeightKg": 78,          // number | null, có thể vắng mặt
+  "startDate": "2026-06-01",    // string | null, có thể vắng mặt
+  "targetWeightKg": 68,         // number | null, có thể vắng mặt
+  "targetWaistCm": 78,          // number | null, có thể vắng mặt
+  "targetChestCm": 96,          // number | null, có thể vắng mặt
+  "targetShoulderCm": 44,       // number | null, có thể vắng mặt
+  "targetArmCm": 28,            // number | null, có thể vắng mặt
+  "targetDate": "2099-12-31",   // string | null, có thể vắng mặt
+  "dailyCalorieTarget": 1900    // number | null, có thể vắng mặt
 }
 ```
 
@@ -105,12 +129,18 @@ Hệ quả cho phía web: trang Cài đặt không cần xử lý nhánh 404, ch
 
 ## 4. Hành vi khác thường #2 — `Goal` lấy `userId` làm **khóa chính**
 
-`server/prisma/schema.prisma:51-57`
+`server/prisma/schema.prisma:54-66`
 
 ```prisma
 model Goal {
   userId             String   @id
+  startWeightKg      Float?
+  startDate          String?
   targetWeightKg     Float?
+  targetWaistCm      Float?
+  targetChestCm      Float?
+  targetShoulderCm   Float?
+  targetArmCm        Float?
   targetDate         String?
   dailyCalorieTarget Int?
   updatedAt          DateTime @updatedAt
@@ -124,8 +154,8 @@ model Goal {
 `findFirst`, không cần guard chống bản ghi trùng.
 
 Test khẳng định: gọi `PUT` hai lần chỉ còn đúng một hàng
-(`server/test/features/goal/goal.controller.test.ts:82-89`), và mục tiêu của user khác
-không lọt sang (`:51-60`).
+(`server/test/features/goal/goal.controller.test.ts:92-99`), và mục tiêu của user khác
+không lọt sang (`:61-70`).
 
 **Lệch spec gốc.** `docs/archive/2026-08-06-original-design.md:151-157` (§4, khối schema) vẫn viết
 `id String @id @default("singleton")`, và `:174` nhắc lại *"id cố định `singleton`"*.
@@ -133,16 +163,35 @@ Nhưng chính spec đó ở `:115` lại nói **`Goal` dùng `userId` làm khóa
 thuẫn. Code đi theo `:115`, và đó là lựa chọn đúng: khi thêm auth, khóa `singleton` sẽ phải
 migrate, còn khóa `userId` thì không.
 
-## 5. Hành vi khác thường #3 — `targetDate` dùng `dateString`, **không** dùng `pastOrTodayDateString`
+## 5. Hành vi khác thường #3 — hai trường ngày, **hai schema ngược hướng nhau có chủ ý**
 
-`server/src/features/goal/dtos/goal.request.ts:23` (và ghi chú tại `:17-18`)
+`server/src/features/goal/dtos/goal.request.ts:33` (`targetDate`) và `:27` (`startDate`),
+ghi chú tại `:19-22`.
 
 Mọi feature khác (`body-logs`, `meals`) validate `date` bằng `pastOrTodayDateString`, schema
 này từ chối ngày tương lai (`server/src/shared/validation/commonSchemas.ts:16-18`).
-`goal` thì **ngược hoàn toàn**: mục tiêu theo định nghĩa nằm ở tương lai, nên chỉ dùng
+`targetDate` thì **ngược hoàn toàn**: mục tiêu theo định nghĩa nằm ở tương lai, nên chỉ dùng
 `dateString` — kiểm định dạng `YYYY-MM-DD` và ngày có thật, không kiểm mốc thời gian.
 
-Test đóng đinh cả hai vế:
+`startDate` (thêm ở đợt `measures-and-goals`) đi theo hướng **thứ ba, khác cả hai**: nó
+dùng lại `pastOrTodayDateString` — cùng schema với `date` của `body-logs`/`meals`, nhưng vì
+lý do khác hẳn. Ba trường ngày, ba lý do:
+
+| Trường | Schema | Vì sao |
+|---|---|---|
+| `date` (`body-logs`, `meals`) | `pastOrTodayDateString` | ghi lại một việc **đã xảy ra** — "hôm nay tôi cân" không thể ở tương lai |
+| `targetDate` | `dateString` | mục tiêu theo định nghĩa nằm ở **tương lai** — chặn tương lai sẽ chặn luôn use case chính |
+| `startDate` | `pastOrTodayDateString` | mốc **xuất phát** của % tiến độ (đợt `charts-mui`) — cùng lý do với `date`: nó là một điểm đã xảy ra, không phải một dự định. Một `startDate` ở tương lai sẽ làm mẫu số của % tiến độ ra số vô nghĩa (ghi chú tại `dtos/goal.request.ts:19-22`) |
+
+Tức là `startDate` và `targetDate` **cùng thuộc một feature, cùng kiểu `String?`, nhưng
+validate ngược hướng nhau** — không phải sơ suất, mà vì chúng trả lời hai câu hỏi khác
+nhau: "tôi bắt đầu từ đâu" (đã xảy ra) so với "tôi muốn tới đâu" (chưa xảy ra).
+
+Test đóng đinh riêng vế `startDate`: `startDate` ở tương lai → **400**
+(`goal.controller.test.ts:273-278`) — đối xứng ngược hẳn với test `targetDate` ở tương lai
+→ 200 ngay dưới đây.
+
+Test đóng đinh cả hai vế của `targetDate`:
 
 - `'2099-12-31'` → **200** (`server/test/features/goal/goal.controller.test.ts:206-211`)
 - `'31/12/2099'` → 400, sai định dạng (`:189-194`)
@@ -152,7 +201,7 @@ Lưu ý: code **không** chặn `targetDate` trong quá khứ. Một mục tiêu
 `GET /summary` xử lý ca đó bằng cách trả `requiredRate = null`
 (`server/src/shared/stats/rate.ts:38-39`).
 
-## 6. Ngữ nghĩa upsert ba trạng thái của `PUT`
+## 6. Ngữ nghĩa upsert ba trạng thái của `PUT`, chín khóa
 
 | Trong body | Ý nghĩa | Kết quả DB |
 |---|---|---|
@@ -162,22 +211,35 @@ Lưu ý: code **không** chặn `targetDate` trong quá khứ. Một mục tiêu
 
 ### Cách code phân biệt "vắng mặt" với `null`
 
-Đây là chỗ dễ sai nhất của feature. `goalUpsertSchema` khai cả ba trường là
-`.nullable()` rồi bọc `.partial()` (`dtos/goal.request.ts:20-26`). Sau khi Zod parse,
+Đây là chỗ dễ sai nhất của feature. `goalUpsertSchema` khai cả chín trường là
+`.nullable()` rồi bọc `.partial()` (`dtos/goal.request.ts:24-36`). Sau khi Zod parse,
 `{ "targetDate": null }` và `{}` **cùng cho ra `parsed.targetDate === undefined`** — hai ý
 nghĩa trái ngược bị gộp làm một.
 
 Nên việc phân biệt phải làm trên **body thô**, trước khi nhìn kết quả parse
-(`dtos/goal.request.ts:47-57`):
+(`dtos/goal.request.ts:61-71, 80-91`):
 
 ```ts
-if ('targetWeightKg' in body) patch.targetWeightKg = parsed.targetWeightKg ?? null;
+const GOAL_PATCH_KEYS = [
+  'startWeightKg', 'startDate', 'targetWeightKg', 'targetWaistCm',
+  'targetChestCm', 'targetShoulderCm', 'targetArmCm', 'targetDate', 'dailyCalorieTarget',
+] as const;
+
+for (const key of GOAL_PATCH_KEYS) {
+  if (!(key in body)) continue;
+  patch[key] = parsed[key] ?? null;
+}
 ```
 
 `key in rawBody` mới trả lời được câu hỏi "client có gửi trường này không". Trường không có
 trong `body` thì cũng không có trong `patch`, tức là `undefined`, mà **Prisma diễn giải
 `undefined` là 'bỏ qua cột này'** — trùng khớp chính xác với ngữ nghĩa "giữ nguyên"
 (`repositories/goal.repository.ts:17-21`).
+
+`GOAL_PATCH_KEYS` (`dtos/goal.request.ts:61-71`) là **nguồn sự thật duy nhất** cho danh
+sách khóa — quan trọng hơn bình thường ở đây vì `goalUpsertSchema` **không** `.strict()`
+(§8.2): khóa lạ bị strip im lặng, không có 400 nào. Quên một khóa trong mảng này = trường
+đó không bao giờ lưu được và không ai biết.
 
 Controller vì thế phải truyền **cả hai** thứ vào `toGoalPatch`: body thô để biết key nào có
 mặt, và kết quả parse để lấy giá trị đã validate
@@ -186,9 +248,9 @@ mặt, và kết quả parse để lấy giá trị đã validate
 Ở nhánh `create` của upsert, trường vắng mặt để cột ở mặc định `null`
 (`repositories/goal.repository.ts:26`).
 
-Bốn test phủ đủ bốn ca: vắng mặt giữ nguyên (`test:116-123`), `null` xóa — kiểm cả response
-lẫn hàng trong DB (`test:125-139`), giá trị ghi đè (`test:141-154`), `{}` không đổi gì
-(`test:156-165`).
+Bốn test phủ đủ bốn ca trên ba trường gốc — mẫu đại diện, không lặp lại cho cả chín trường:
+vắng mặt giữ nguyên (`test:126-133`), `null` xóa — kiểm cả response lẫn hàng trong DB
+(`test:135-149`), giá trị ghi đè (`test:151-164`), `{}` không đổi gì (`test:166-175`).
 
 ## 7. Vì sao feature này **không** tính `remainingKg` và `onTrack`
 
@@ -218,12 +280,13 @@ Ba chỗ code quyết định thay cho spec vì spec không nói tới.
 
 ### 8.1 Response có thêm `updatedAt`
 
-Spec §5 chỉ liệt kê ba trường mục tiêu. Code trả thêm `updatedAt` dạng **ISO string**, và là
-**`null` khi chưa từng đặt mục tiêu** (`dtos/goal.response.ts:14,28,36`).
+Spec §5 chỉ liệt kê ba trường mục tiêu gốc (chín trường sau đợt `measures-and-goals`).
+Code trả thêm `updatedAt` dạng **ISO string**, và là **`null` khi chưa từng đặt mục tiêu**
+(`dtos/goal.response.ts:26,47-52`).
 
-**Vì sao:** cột `updatedAt` đã có sẵn trong schema (`schema.prisma:56`), và nó là thứ duy
-nhất phân biệt được *"chưa từng đặt mục tiêu"* với *"đã đặt rồi nhưng xóa hết cả ba trường"*
-— hai trạng thái mà nếu chỉ nhìn ba trường kia thì trông y hệt nhau (cả ba `null`). Trạng
+**Vì sao:** cột `updatedAt` đã có sẵn trong schema (`schema.prisma:65`), và nó là thứ duy
+nhất phân biệt được *"chưa từng đặt mục tiêu"* với *"đã đặt rồi nhưng xóa hết chín trường"*
+— hai trạng thái mà nếu chỉ nhìn chín trường kia thì trông y hệt nhau (đều `null`). Trạng
 thái thứ hai là có thật và tạo được: xem §8.3.
 
 Chuyển `Date` → ISO string ở tầng DTO chứ không để JSON.stringify tự lo, để hợp đồng API là
@@ -233,37 +296,38 @@ không có hàng (`test:28`).
 ### 8.2 Zod object **không** `.strict()` — khóa lạ bị strip, không bị từ chối
 
 `goalUpsertSchema` là `z.object({…}).partial()`, không có `.strict()`
-(`dtos/goal.request.ts:20-26`). Zod mặc định **loại bỏ im lặng** khóa không khai báo.
+(`dtos/goal.request.ts:24-36`). Zod mặc định **loại bỏ im lặng** khóa không khai báo.
 
-**Vì sao:** khóa lạ không thể lọt xuống DB — `toGoalPatch` chỉ copy đúng ba khóa nó biết
-tên, bằng ba câu `if` viết tay (`dtos/goal.request.ts:52-54`). Bề mặt tấn công đã đóng ở đó,
-nên `.strict()` chỉ thêm một nguồn 400 cho những request vô hại (ví dụ web gửi ngược nguyên
-object nhận từ `GET`, kèm cả `updatedAt`). Đây chính là ca thực tế: `GET` trả bốn trường,
-`PUT` chỉ nhận ba.
+**Vì sao:** khóa lạ không thể lọt xuống DB — `toGoalPatch` chỉ copy đúng những khóa nó biết
+tên, lặp qua `GOAL_PATCH_KEYS` (`dtos/goal.request.ts:61-71, 85-88`, xem §6). Bề mặt tấn
+công đã đóng ở đó, nên `.strict()` chỉ thêm một nguồn 400 cho những request vô hại (ví dụ
+web gửi ngược nguyên object nhận từ `GET`, kèm cả `updatedAt`). Đây chính là ca thực tế:
+`GET` trả mười trường (chín trường mục tiêu + `updatedAt`), `PUT` chỉ nhận chín.
 
 **Đánh đổi đã chấp nhận:** gõ sai tên trường (`targetWeight` thay vì `targetWeightKg`) sẽ
 trả 200 mà không ghi gì. Không có test phủ ca này.
 
 ### 8.3 `PUT {}` trên DB trắng vẫn **tạo** một hàng toàn `null`, trả 200
 
-`server/test/features/goal/goal.controller.test.ts:91-101` — sau request, `prisma.goal.count()`
+`server/test/features/goal/goal.controller.test.ts:101-111` — sau request, `prisma.goal.count()`
 bằng 1.
 
 Đây là hệ quả trực tiếp của việc `patch` rỗng đi vào `prisma.goal.upsert`: nhánh `create` vẫn
-chạy với `{ userId }` và ba cột để mặc định `null`
+chạy với `{ userId }` và chín cột để mặc định `null`
 (`repositories/goal.repository.ts:24-28`).
 
 **Vì sao chấp nhận thay vì chặn:** `PUT` là **idempotent** — kết quả sau lệnh phải giống nhau
 bất kể trước đó có hàng hay không. Chặn ca này đồng nghĩa với việc `PUT {}` cư xử khác nhau
 tùy trạng thái DB (400 khi trắng, 200 khi đã có), phá tính idempotent và thêm một nhánh lỗi
 cho một request không gây hại. Hàng toàn `null` đọc ra qua `GET` cho kết quả **giống hệt**
-trường hợp chưa có hàng ở ba trường mục tiêu — khác duy nhất ở `updatedAt` (§8.1).
+trường hợp chưa có hàng ở chín trường mục tiêu — khác duy nhất ở `updatedAt` (§8.1).
 
 ## 9. Tổng hợp chỗ lệch spec gốc
 
 | Chỗ | Spec gốc | Code | Ghi chú |
 |---|---|---|---|
-| Khóa chính `Goal` | `id @default("singleton")` (`2026-08-06-original-design.md:151,174`) | `userId @id` (`schema.prisma:52`) | Spec tự mâu thuẫn — `:115` đã nói `userId`. Code theo `:115`. |
+| Khóa chính `Goal` | `id @default("singleton")` (`2026-08-06-original-design.md:151,174`) | `userId @id` (`schema.prisma:55`) | Spec tự mâu thuẫn — `:115` đã nói `userId`. Code theo `:115`. |
 | Trường `updatedAt` trong response | không nhắc | có, ISO string / `null` | §8.1 |
-| Body `PUT /goal` | không định nghĩa | ba trường optional + nullable | §6 |
+| Body `PUT /goal` | không định nghĩa (3 trường gốc) | chín trường optional + nullable, thêm ở đợt `measures-and-goals` | §6 |
+| `startWeightKg`/`startDate` | không nhắc | lưu và trả nguyên trạng, không tính % tiến độ | §1, §7 |
 | Trần `dailyCalorieTarget` | §5 định nghĩa `caloriesSchema` cho calo **một bữa** | dùng lại nguyên schema đó cho **cả ngày** | Câu hỏi mở — xem `PLAN.md` §4 |

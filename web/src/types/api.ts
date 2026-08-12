@@ -16,6 +16,9 @@ export interface BodyLog {
   date: string; // "YYYY-MM-DD" — không bao giờ là Date/DateTime
   weightKg: number | null;
   waistCm: number | null;
+  chestCm: number | null;
+  shoulderCm: number | null;
+  armCm: number | null;
   note: string | null;
   createdAt: string; // ISO 8601 — thời điểm thật
   updatedAt: string; // ISO 8601
@@ -43,7 +46,13 @@ export interface Meal {
 // ---------------------------------------------------------------------------
 
 export interface Goal {
+  startWeightKg: number | null;
+  startDate: string | null; // "YYYY-MM-DD" — mốc 0% của tiến độ
   targetWeightKg: number | null;
+  targetWaistCm: number | null;
+  targetChestCm: number | null;
+  targetShoulderCm: number | null;
+  targetArmCm: number | null;
   targetDate: string | null; // "YYYY-MM-DD"
   dailyCalorieTarget: number | null;
   updatedAt: string | null; // ISO 8601 — null khi chưa từng ghi mục tiêu
@@ -59,6 +68,12 @@ export interface SummaryDay {
   weightMa7: number | null; // null khi cửa sổ MA7 có dưới 2 giá trị
   waistCm: number | null;
   waistMa7: number | null;
+  chestCm: number | null;
+  chestMa7: number | null;
+  shoulderCm: number | null;
+  shoulderMa7: number | null;
+  armCm: number | null;
+  armMa7: number | null;
   totalCalories: number; // không bao giờ null — ngày không ghi bữa là 0
   mealCount: number; // 0 khi không ghi bữa nào
 }
@@ -70,6 +85,8 @@ export interface SummaryWeek {
 }
 
 export interface SummaryGoal {
+  startWeightKg: number | null;
+  startDate: string | null;
   targetWeightKg: number | null;
   targetDate: string | null;
   dailyCalorieTarget: number | null;

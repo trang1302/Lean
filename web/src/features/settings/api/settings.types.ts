@@ -17,14 +17,22 @@ import type { Goal } from '../../../types/api';
 export type GoalResponse = Goal;
 
 /**
- * Body của `PUT /api/goal`. Cả ba trường optional + nullable (SPEC §3):
- * vắng mặt = giữ nguyên, `null` = xóa, có giá trị = ghi đè. `goalUpsertSchema`
- * ở server KHÔNG `.strict()` (SPEC §3, "cạm bẫy im lặng") — vì vậy `GoalPatch`
- * chỉ khai đúng ba khóa này, không mở rộng, để không ai lỡ tay spread thêm
- * khóa lạ (server sẽ strip im lặng, không báo lỗi).
+ * Body của `PUT /api/goal`. Mọi trường optional + nullable (SPEC §3):
+ * vắng mặt = giữ nguyên, `null` = xóa, có giá trị = ghi đè.
+ *
+ * `goalUpsertSchema` ở server KHÔNG `.strict()` — khóa lạ bị strip IM LẶNG,
+ * không có 400 nào. Vì vậy kiểu này phải liệt kê chính xác 9 khóa server biết:
+ * gõ thừa một khóa ở đây thì TypeScript bắt được, còn để lọt xuống runtime thì
+ * không ai bắt được.
  */
 export interface GoalPatch {
+  startWeightKg?: number | null;
+  startDate?: string | null;
   targetWeightKg?: number | null;
+  targetWaistCm?: number | null;
+  targetChestCm?: number | null;
+  targetShoulderCm?: number | null;
+  targetArmCm?: number | null;
   targetDate?: string | null;
   dailyCalorieTarget?: number | null;
 }

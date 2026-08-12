@@ -281,6 +281,78 @@ describe('DELETE /api/body-logs/:date', () => {
   });
 });
 
+const MEASURE_FIELDS = ['weightKg', 'waistCm', 'chestCm', 'shoulderCm', 'armCm'] as const;
+
+/** Một ngày ghi đủ cả năm số đo — điểm xuất phát của mọi test bên dưới. */
+const FULL_ROW = {
+  weightKg: 72.4,
+  waistCm: 88,
+  chestCm: 98,
+  shoulderCm: 112,
+  armCm: 32,
+} as const;
+
+describe('PUT /api/body-logs/:date — ghi MỘT số đo không đụng bốn số đo kia', () => {
+  // Đây là test đắt nhất của cả feature. Upsert 3 trạng thái tồn tại CHỈ để
+  // bảo đảm điều này; một test chỉ khẳng định "trả 200" sẽ vẫn xanh khi bug
+  // xoá dữ liệu xảy ra, tức là một test sai.
+  it.each(MEASURE_FIELDS)('sửa %s giữ nguyên bốn trường còn lại', async (field) => {
+    await prisma.bodyLog.create({
+      data: { userId: LOCAL_USER_ID, date: YESTERDAY, ...FULL_ROW },
+    });
+
+    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ [field]: 50 });
+
+    expect(res.status).toBe(200);
+    expect(res.body[field]).toBe(50);
+    for (const other of MEASURE_FIELDS) {
+      if (other === field) continue;
+      expect(res.body[other]).toBe(FULL_ROW[other]);
+    }
+  });
+
+  it.each(MEASURE_FIELDS)('gửi null xoá đúng %s, bốn trường kia còn nguyên', async (field) => {
+    await prisma.bodyLog.create({
+      data: { userId: LOCAL_USER_ID, date: YESTERDAY, ...FULL_ROW },
+    });
+
+    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ [field]: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body[field]).toBeNull();
+    for (const other of MEASURE_FIELDS) {
+      if (other === field) continue;
+      expect(res.body[other]).toBe(FULL_ROW[other]);
+    }
+  });
+
+  it('gõ sai tên khoá → 400, KHÔNG lặng lẽ bỏ qua', async () => {
+    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ chest: 98 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('vòng ngực âm → 400 kèm đúng tên trường', async () => {
+    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ chestCm: -5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.fields.map((f: { path: string }) => f.path)).toContain('chestCm');
+  });
+});
+
+describe('GET /api/body-logs/:date — trả đủ 5 số đo', () => {
+  it('ngày ghi đủ năm số đo trả về đủ năm', async () => {
+    await prisma.bodyLog.create({
+      data: { userId: LOCAL_USER_ID, date: YESTERDAY, ...FULL_ROW },
+    });
+
+    const res = await request(app).get(`/api/body-logs/${YESTERDAY}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject(FULL_ROW);
+  });
+});
+
 describe('GET /api/body-logs?from=&to=', () => {
   it('trả danh sách sắp xếp TĂNG DẦN theo date', async () => {
     // Chèn lộn xộn để bài test thực sự kiểm tra orderBy, không phải thứ tự chèn.

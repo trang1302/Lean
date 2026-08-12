@@ -11,7 +11,7 @@ mỗi ngày, nên mọi biểu đồ đều đi kèm trung bình trượt 7 ngà
 
 | Phần | Trạng thái |
 |---|---|
-| Server (`server/`) — 5 feature: `body-logs` `meals` `goal` `summary` `reminders` | **Đã xong**, 208 test pass |
+| Server (`server/`) — 5 feature: `body-logs` `meals` `goal` `summary` `reminders` | **Đã xong**, 239 test pass |
 | Web (`web/`) — 3 trang: Hôm nay · Biểu đồ · Cài đặt | **Chưa bắt đầu**, thư mục `web/` chưa tồn tại |
 
 Nghĩa là hiện tại app dùng được **qua HTTP API**, chưa có màn hình để bấm. Mọi lệnh
@@ -146,7 +146,7 @@ File này nằm trong `.gitignore` — dữ liệu cá nhân, không commit.
 ## Test
 
 ```bash
-cd server && npm test          # vitest run — 208 test, 11 file
+cd server && npm test          # vitest run — 239 test, 11 file
 cd server && npm run typecheck # tsc --noEmit
 cd server && npm run build     # tsc -p tsconfig.json
 ```

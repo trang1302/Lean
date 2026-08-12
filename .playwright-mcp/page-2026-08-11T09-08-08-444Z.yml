@@ -1,0 +1,57 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]: Lean
+    - navigation "Điều hướng chính" [ref=e6]:
+      - link "Hôm nay" [ref=e7] [cursor=pointer]:
+        - /url: /
+      - link "Biểu đồ" [ref=e8] [cursor=pointer]:
+        - /url: /charts
+      - link "Cài đặt" [ref=e9] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=e10]: chưa đăng nhập
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - heading "Hôm nay" [level=1] [ref=e14]
+      - generic [ref=e15]:
+        - generic [ref=e16]: Ngày
+        - textbox "Ngày" [ref=e17]: 2026-08-11
+      - generic [ref=e18]:
+        - heading "Số đo" [level=2] [ref=e19]
+        - generic [ref=e21]:
+          - generic [ref=e22]: Cân nặng (kg)
+          - spinbutton "Cân nặng (kg)" [ref=e23]
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]: Vòng bụng (cm)
+            - spinbutton "Vòng bụng (cm)" [ref=e27]
+          - generic [ref=e28]:
+            - generic [ref=e29]: Vòng ngực (cm)
+            - spinbutton "Vòng ngực (cm)" [ref=e30]
+          - generic [ref=e31]:
+            - generic [ref=e32]: Vòng vai (cm)
+            - spinbutton "Vòng vai (cm)" [ref=e33]
+          - generic [ref=e34]:
+            - generic [ref=e35]: Vòng bắp tay (cm)
+            - spinbutton "Vòng bắp tay (cm)" [ref=e36]
+        - paragraph [ref=e37]: Để trống rồi rời ô để xóa giá trị.
+      - generic [ref=e38]:
+        - heading "Bữa ăn" [level=2] [ref=e39]
+        - generic [ref=e40]: Chưa ghi bữa nào cho ngày này.
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]: Buổi
+            - combobox "Buổi" [ref=e44]:
+              - option "Sáng" [selected]
+              - option "Trưa"
+              - option "Tối"
+              - option "Phụ"
+          - generic [ref=e45]:
+            - generic [ref=e46]: Tên món
+            - textbox "Tên món" [ref=e47]
+          - generic [ref=e48]:
+            - generic [ref=e49]: Calo
+            - spinbutton "Calo" [ref=e50]
+          - button "+" [ref=e51] [cursor=pointer]
+      - generic [ref=e52]:
+        - heading "Tổng calo" [level=2] [ref=e53]
+        - generic [ref=e54]: Chưa ghi bữa nào — thêm bữa đầu tiên ở trên để xem tổng calo hôm nay.

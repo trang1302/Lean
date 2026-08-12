@@ -15,6 +15,9 @@ export interface BodyLogRow {
   date: string;
   weightKg: number | null;
   waistCm: number | null;
+  chestCm: number | null;
+  shoulderCm: number | null;
+  armCm: number | null;
 }
 
 /** Đã gộp sẵn theo NGÀY: một ngày nhiều bữa vẫn chỉ là một dòng. */
@@ -25,6 +28,8 @@ export interface DailyMealTotal {
 }
 
 export interface GoalRow {
+  startWeightKg: number | null;
+  startDate: string | null;
   targetWeightKg: number | null;
   targetDate: string | null;
   dailyCalorieTarget: number | null;
@@ -42,7 +47,14 @@ export async function findBodyLogsBetween(
 ): Promise<BodyLogRow[]> {
   return prisma.bodyLog.findMany({
     where: { userId: LOCAL_USER_ID, date: { gte: fromIso, lte: toIso } },
-    select: { date: true, weightKg: true, waistCm: true },
+    select: {
+      date: true,
+      weightKg: true,
+      waistCm: true,
+      chestCm: true,
+      shoulderCm: true,
+      armCm: true,
+    },
     orderBy: { date: 'asc' },
   });
 }
@@ -80,6 +92,12 @@ export async function findDailyMealTotals(
 export async function findGoal(): Promise<GoalRow | null> {
   return prisma.goal.findUnique({
     where: { userId: LOCAL_USER_ID },
-    select: { targetWeightKg: true, targetDate: true, dailyCalorieTarget: true },
+    select: {
+      startWeightKg: true,
+      startDate: true,
+      targetWeightKg: true,
+      targetDate: true,
+      dailyCalorieTarget: true,
+    },
   });
 }

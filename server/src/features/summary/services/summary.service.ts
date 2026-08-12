@@ -27,6 +27,19 @@ const MA7_LOOKBACK_DAYS = 6;
 /** `currentRateKgPerWeek` so MA7 hôm nay với MA7 của 14 ngày trước. */
 const TREND_LOOKBACK_DAYS = 14;
 
+/**
+ * Năm số đo, mỗi cái một cặp (trường thô, trường MA7). Đây là nguồn sự thật
+ * cho toàn bộ vòng lặp bên dưới — trước đây mỗi số đo là một khối code chép
+ * lại, và chép lại chính là cách chắc chắn nhất để hai chỗ lệch nhau.
+ */
+const MEASURES = [
+  { raw: 'weightKg', ma7: 'weightMa7' },
+  { raw: 'waistCm', ma7: 'waistMa7' },
+  { raw: 'chestCm', ma7: 'chestMa7' },
+  { raw: 'shoulderCm', ma7: 'shoulderMa7' },
+  { raw: 'armCm', ma7: 'armMa7' },
+] as const;
+
 function earlier(a: string, b: string): string {
   return a <= b ? a : b;
 }
@@ -60,15 +73,29 @@ export async function getSummary(range: SummaryQuery): Promise<SummaryResponse> 
     summaryRepository.findGoal(),
   ]);
 
-  const weightPoints: DatedValue[] = [];
-  const waistPoints: DatedValue[] = [];
+  // Gom điểm dữ liệu cho từng số đo. Bỏ qua `null` — "không đo" khác "đo ra 0".
+  const pointsByMeasure = new Map<string, DatedValue[]>(
+    MEASURES.map((measure) => [measure.raw, [] as DatedValue[]]),
+  );
   for (const log of bodyLogs) {
-    if (log.weightKg !== null) weightPoints.push({ date: log.date, value: log.weightKg });
-    if (log.waistCm !== null) waistPoints.push({ date: log.date, value: log.waistCm });
+    for (const measure of MEASURES) {
+      const value = log[measure.raw];
+      if (value !== null) {
+        pointsByMeasure.get(measure.raw)!.push({ date: log.date, value });
+      }
+    }
   }
 
-  const weightMa7 = ma7ByDate(movingAverage7(weightPoints, range.from, range.to));
-  const waistMa7 = ma7ByDate(movingAverage7(waistPoints, range.from, range.to));
+  const ma7ByMeasure = new Map<string, Map<string, number | null>>(
+    MEASURES.map((measure) => [
+      measure.raw,
+      ma7ByDate(movingAverage7(pointsByMeasure.get(measure.raw)!, range.from, range.to)),
+    ]),
+  );
+
+  // Cân nặng vẫn cần riêng cho xu hướng và trung bình tuần — cả hai chỉ nói về
+  // cân nặng, không mở rộng sang bốn vòng.
+  const weightPoints = pointsByMeasure.get('weightKg')!;
 
   // Một lần gọi cho cả hai đầu của xu hướng: MA7 tại `today` và tại `today - 14`.
   const trendMa7 = ma7ByDate(movingAverage7(weightPoints, trendFrom, today));
@@ -81,15 +108,20 @@ export async function getSummary(range: SummaryQuery): Promise<SummaryResponse> 
   const days: SummaryDay[] = enumerateDates(range.from, range.to).map((date) => {
     const log = bodyLogByDate.get(date);
     const meals = mealsByDate.get(date);
-    return {
+    const day = {
       date,
-      weightKg: log?.weightKg ?? null,
-      weightMa7: weightMa7.get(date) ?? null,
-      waistCm: log?.waistCm ?? null,
-      waistMa7: waistMa7.get(date) ?? null,
       totalCalories: meals?.totalCalories ?? 0,
       mealCount: meals?.mealCount ?? 0,
-    };
+    } as SummaryDay;
+
+    for (const measure of MEASURES) {
+      // Ép kiểu vì `measure.raw` là biến vòng lặp; `MEASURES` là `as const`
+      // nên tập tên trường vẫn được kiểm tại chỗ khai báo.
+      (day as unknown as Record<string, number | null>)[measure.raw] = log?.[measure.raw] ?? null;
+      (day as unknown as Record<string, number | null>)[measure.ma7] =
+        ma7ByMeasure.get(measure.raw)!.get(date) ?? null;
+    }
+    return day;
   });
 
   const weeks = weeklySummaries(
@@ -106,6 +138,8 @@ export async function getSummary(range: SummaryQuery): Promise<SummaryResponse> 
   const requiredRate = requiredRateKgPerWeek(ma7Today, targetWeightKg, targetDate, today);
 
   const goalProgress: SummaryGoal = {
+    startWeightKg: goal?.startWeightKg ?? null,
+    startDate: goal?.startDate ?? null,
     targetWeightKg,
     targetDate,
     dailyCalorieTarget: goal?.dailyCalorieTarget ?? null,

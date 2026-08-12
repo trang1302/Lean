@@ -23,7 +23,13 @@ describe('TodayPage — ngày trắng hoàn toàn (PLAN §4 bước 7 deliverabl
     vi.mocked(todayApi.getBodyLog).mockResolvedValue(null);
     vi.mocked(todayApi.getMeals).mockResolvedValue([]);
     vi.mocked(todayApi.getGoal).mockResolvedValue({
+      startWeightKg: null,
+      startDate: null,
       targetWeightKg: null,
+      targetWaistCm: null,
+      targetChestCm: null,
+      targetShoulderCm: null,
+      targetArmCm: null,
       targetDate: null,
       dailyCalorieTarget: null,
       updatedAt: null,
@@ -48,7 +54,13 @@ describe('TodayPage — mount gọi ba endpoint song song đúng theo ngày hôm
     vi.mocked(todayApi.getBodyLog).mockResolvedValue(null);
     vi.mocked(todayApi.getMeals).mockResolvedValue([]);
     vi.mocked(todayApi.getGoal).mockResolvedValue({
+      startWeightKg: null,
+      startDate: null,
       targetWeightKg: null,
+      targetWaistCm: null,
+      targetChestCm: null,
+      targetShoulderCm: null,
+      targetArmCm: null,
       targetDate: null,
       dailyCalorieTarget: 1900,
       updatedAt: null,
@@ -68,6 +80,9 @@ describe('TodayPage — có bữa ăn + mục tiêu → tổng calo và tiến �
       date: todayIso(),
       weightKg: 70,
       waistCm: 85,
+      chestCm: null,
+      shoulderCm: null,
+      armCm: null,
       note: null,
       createdAt: '',
       updatedAt: '',
@@ -85,7 +100,13 @@ describe('TodayPage — có bữa ăn + mục tiêu → tổng calo và tiến �
       },
     ]);
     vi.mocked(todayApi.getGoal).mockResolvedValue({
+      startWeightKg: null,
+      startDate: null,
       targetWeightKg: null,
+      targetWaistCm: null,
+      targetChestCm: null,
+      targetShoulderCm: null,
+      targetArmCm: null,
       targetDate: null,
       dailyCalorieTarget: 1900,
       updatedAt: null,

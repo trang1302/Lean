@@ -13,10 +13,12 @@ const app = createApp();
  */
 const TODAY = todayIso();
 const dayAgo = (n: number): string => addDays(TODAY, -n);
+const TWO_DAYS_AGO = addDays(TODAY, -2);
+const FIVE_DAYS_AGO = addDays(TODAY, -5);
 
 async function seedBodyLog(
   date: string,
-  values: { weightKg?: number; waistCm?: number },
+  values: { weightKg?: number; waistCm?: number; chestCm?: number },
 ): Promise<void> {
   await prisma.bodyLog.create({
     data: {
@@ -24,6 +26,7 @@ async function seedBodyLog(
       date,
       weightKg: values.weightKg ?? null,
       waistCm: values.waistCm ?? null,
+      chestCm: values.chestCm ?? null,
     },
   });
 }
@@ -76,11 +79,17 @@ describe('GET /api/summary — hình dạng response', () => {
         'waistMa7',
         'weightKg',
         'weightMa7',
+        'chestCm',
+        'chestMa7',
+        'shoulderCm',
+        'shoulderMa7',
+        'armCm',
+        'armMa7',
       ].sort(),
     );
   });
 
-  it('khối goal có đủ 8 trường theo §5', async () => {
+  it('khối goal có đủ 10 trường theo §5', async () => {
     const res = await request(app)
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(58) });
@@ -95,6 +104,8 @@ describe('GET /api/summary — hình dạng response', () => {
         'requiredRateKgPerWeek',
         'targetDate',
         'targetWeightKg',
+        'startDate',
+        'startWeightKg',
       ].sort(),
     );
   });
@@ -158,6 +169,24 @@ describe('GET /api/summary — days', () => {
     // (70 + 72 + 74) / 3 = 72 — không phải null, và không phải 74.
     expect(res.body.days[0].weightMa7).toBeCloseTo(72, 10);
     expect(res.body.days[0].waistMa7).toBeCloseTo(92, 10);
+  });
+
+  it('chestMa7 không null, bằng trung bình — bắt lỗi tráo cặp {raw, ma7} trong bảng MEASURES', async () => {
+    // waistMa7 ở test trên đã chứng minh map theo-số-đo hoạt động cho MỘT số
+    // đo không phải cân nặng. Test này thêm chestCm để loại khả năng còn lại:
+    // một cặp {raw, ma7} bị tráo trong MEASURES (vd. raw: 'chestCm', ma7:
+    // 'shoulderMa7') vẫn để đủ 13 khoá nhưng giá trị sai — chỉ một phép trừ
+    // giá trị mới bắt được, `toHaveProperty` không đủ.
+    await seedBodyLog(dayAgo(2), { chestCm: 94 });
+    await seedBodyLog(dayAgo(1), { chestCm: 96 });
+    await seedBodyLog(dayAgo(0), { chestCm: 98 });
+
+    const res = await request(app)
+      .get('/api/summary')
+      .query({ from: dayAgo(0), to: dayAgo(0) });
+
+    // (94 + 96 + 98) / 3 = 96.
+    expect(res.body.days[0].chestMa7).toBeCloseTo(96, 10);
   });
 
   it('totalCalories và mealCount cộng đúng theo ngày', async () => {
@@ -225,6 +254,8 @@ describe('GET /api/summary — goal', () => {
       .query({ from: dayAgo(60), to: dayAgo(58) });
 
     expect(res.body.goal).toEqual({
+      startWeightKg: null,
+      startDate: null,
       targetWeightKg: null,
       targetDate: null,
       dailyCalorieTarget: null,
@@ -343,5 +374,51 @@ describe('GET /api/summary — validate', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+describe('GET /api/summary — cả 5 số đo đều có cặp thô + MA7', () => {
+  const MEASURE_PAIRS = [
+    ['weightKg', 'weightMa7'],
+    ['waistCm', 'waistMa7'],
+    ['chestCm', 'chestMa7'],
+    ['shoulderCm', 'shoulderMa7'],
+    ['armCm', 'armMa7'],
+  ] as const;
+
+  it.each(MEASURE_PAIRS)('mỗi ngày mang %s và %s', async (rawKey, ma7Key) => {
+    const res = await request(app).get(`/api/summary?from=${TWO_DAYS_AGO}&to=${TODAY}`);
+
+    expect(res.status).toBe(200);
+    for (const day of res.body.days) {
+      expect(day).toHaveProperty(rawKey);
+      expect(day).toHaveProperty(ma7Key);
+    }
+  });
+
+  // Cạm bẫy đã ghi trong CLAUDE.md: cửa sổ dưới 2 giá trị thì MA7 phải null.
+  // Trước đây chỉ cân nặng được kiểm; giờ phải đúng cho CẢ NĂM số đo, nếu
+  // không thì một điểm đơn lẻ sẽ được vẽ như thể nó là trung bình.
+  it.each(MEASURE_PAIRS)('%s chỉ có 1 giá trị trong cửa sổ → %s là null', async (rawKey, ma7Key) => {
+    await prisma.bodyLog.create({
+      data: { userId: LOCAL_USER_ID, date: TODAY, [rawKey]: 50 },
+    });
+
+    const res = await request(app).get(`/api/summary?from=${TODAY}&to=${TODAY}`);
+
+    const today = res.body.days.find((d: { date: string }) => d.date === TODAY);
+    expect(today[rawKey]).toBe(50);
+    expect(today[ma7Key]).toBeNull();
+  });
+
+  it('goal trả startWeightKg và startDate đọc thẳng từ bảng', async () => {
+    await prisma.goal.create({
+      data: { userId: LOCAL_USER_ID, startWeightKg: 75, startDate: FIVE_DAYS_AGO },
+    });
+
+    const res = await request(app).get(`/api/summary?from=${TWO_DAYS_AGO}&to=${TODAY}`);
+
+    expect(res.body.goal.startWeightKg).toBe(75);
+    expect(res.body.goal.startDate).toBe(FIVE_DAYS_AGO);
   });
 });

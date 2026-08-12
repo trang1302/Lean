@@ -3,8 +3,12 @@ import request from 'supertest';
 import { createApp } from '../../../src/app.js';
 import { prisma } from '../../../src/lib/db.js';
 import { LOCAL_USER_ID } from '../../../src/shared/constants.js';
+import { addDays, todayIso } from '../../../src/lib/time.js';
 
 const app = createApp();
+const TODAY = todayIso();
+const TWO_DAYS_AGO = addDays(TODAY, -2);
+const TOMORROW = addDays(TODAY, 1);
 
 beforeEach(async () => {
   await prisma.goal.deleteMany();
@@ -22,7 +26,13 @@ describe('GET /api/goal', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
+      startWeightKg: null,
+      startDate: null,
       targetWeightKg: null,
+      targetWaistCm: null,
+      targetChestCm: null,
+      targetShoulderCm: null,
+      targetArmCm: null,
       targetDate: null,
       dailyCalorieTarget: null,
       updatedAt: null,
@@ -213,5 +223,89 @@ describe('PUT /api/goal — validate', () => {
   it('request lỗi validate không ghi gì vào DB', async () => {
     await request(app).put('/api/goal').send({ targetWeightKg: 0 });
     expect(await prisma.goal.count()).toBe(0);
+  });
+});
+
+describe('PUT /api/goal — 9 trường, không trường nào bị strip im lặng', () => {
+  const FULL_GOAL = {
+    startWeightKg: 75,
+    startDate: TWO_DAYS_AGO,
+    targetWeightKg: 68,
+    targetWaistCm: 80,
+    targetChestCm: 95,
+    targetShoulderCm: 110,
+    targetArmCm: 30,
+    targetDate: '2027-01-01',
+    dailyCalorieTarget: 1800,
+  } as const;
+
+  it('gửi cả 9 trường thì đọc lại đủ 9', async () => {
+    const put = await request(app).put('/api/goal').send(FULL_GOAL);
+    expect(put.status).toBe(200);
+
+    const get = await request(app).get('/api/goal');
+    expect(get.status).toBe(200);
+    expect(get.body).toMatchObject(FULL_GOAL);
+  });
+
+  it('gửi một trường không đụng tám trường kia', async () => {
+    await request(app).put('/api/goal').send(FULL_GOAL);
+
+    await request(app).put('/api/goal').send({ targetArmCm: 28 });
+
+    const get = await request(app).get('/api/goal');
+    expect(get.body.targetArmCm).toBe(28);
+    expect(get.body).toMatchObject({ ...FULL_GOAL, targetArmCm: 28 });
+  });
+
+  it('gửi null xoá đúng một trường', async () => {
+    await request(app).put('/api/goal').send(FULL_GOAL);
+
+    await request(app).put('/api/goal').send({ startWeightKg: null });
+
+    const get = await request(app).get('/api/goal');
+    expect(get.body.startWeightKg).toBeNull();
+    expect(get.body.startDate).toBe(TWO_DAYS_AGO);
+  });
+
+  // startDate là mốc ĐÃ XẢY RA (điểm xuất phát), ngược hẳn targetDate là mốc
+  // TƯƠNG LAI. Hai trường ngày, hai schema khác nhau — đây là chỗ dễ chép nhầm.
+  it('startDate ở tương lai → 400', async () => {
+    const res = await request(app).put('/api/goal').send({ startDate: TOMORROW });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.fields.map((f: { path: string }) => f.path)).toContain('startDate');
+  });
+
+  it('startDate sai định dạng → 400', async () => {
+    const res = await request(app).put('/api/goal').send({ startDate: '01-01-2026' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('targetDate ở tương lai vẫn hợp lệ', async () => {
+    const res = await request(app).put('/api/goal').send({ targetDate: '2030-06-01' });
+
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('GET /api/goal — chưa đặt gì trả 9 trường null', () => {
+  it('không 404, mọi trường null', async () => {
+    const res = await request(app).get('/api/goal');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      startWeightKg: null,
+      startDate: null,
+      targetWeightKg: null,
+      targetWaistCm: null,
+      targetChestCm: null,
+      targetShoulderCm: null,
+      targetArmCm: null,
+      targetDate: null,
+      dailyCalorieTarget: null,
+      updatedAt: null,
+    });
   });
 });

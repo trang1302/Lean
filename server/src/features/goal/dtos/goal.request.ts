@@ -1,25 +1,35 @@
 import { z } from 'zod';
 import {
   caloriesSchema,
+  circumferenceCmSchema,
   dateString,
+  pastOrTodayDateString,
   weightKgSchema,
 } from '../../../shared/validation/commonSchemas.js';
 
 /**
  * Body của `PUT /api/goal`.
  *
- * Cả ba trường đều optional VÀ nullable — đó là hai chuyện khác nhau ở đây:
+ * Mọi trường đều optional VÀ nullable — hai chuyện khác nhau:
  *   vắng mặt → giữ nguyên giá trị cũ
  *   `null`   → xóa giá trị
  * `.partial()` gộp cả hai thành `undefined` sau khi parse, nên phần phân biệt
  * nằm ở `toGoalPatch()` bên dưới, đọc trên body THÔ.
  *
- * `targetDate` dùng `dateString` chứ KHÔNG dùng `pastOrTodayDateString`:
- * mục tiêu nằm ở tương lai, ngược hẳn với `date` của bodyLogs/meals.
+ * HAI TRƯỜNG NGÀY DÙNG HAI SCHEMA KHÁC NHAU, cố ý:
+ * - `targetDate` là `dateString` — mục tiêu nằm ở TƯƠNG LAI;
+ * - `startDate` là `pastOrTodayDateString` — điểm xuất phát là mốc ĐÃ XẢY RA.
+ *   Một mốc xuất phát ở tương lai sẽ làm % tiến độ (đợt `charts-mui`) ra số vô nghĩa.
  */
 export const goalUpsertSchema = z
   .object({
+    startWeightKg: weightKgSchema.nullable(),
+    startDate: pastOrTodayDateString.nullable(),
     targetWeightKg: weightKgSchema.nullable(),
+    targetWaistCm: circumferenceCmSchema.nullable(),
+    targetChestCm: circumferenceCmSchema.nullable(),
+    targetShoulderCm: circumferenceCmSchema.nullable(),
+    targetArmCm: circumferenceCmSchema.nullable(),
     targetDate: dateString.nullable(),
     dailyCalorieTarget: caloriesSchema.nullable(),
   })
@@ -32,10 +42,33 @@ export type GoalUpsertRequest = z.infer<typeof goalUpsertSchema>;
  * trường mang `null` = xóa. Prisma hiểu đúng cả hai vì `undefined` là "bỏ qua".
  */
 export interface GoalPatch {
+  startWeightKg?: number | null;
+  startDate?: string | null;
   targetWeightKg?: number | null;
+  targetWaistCm?: number | null;
+  targetChestCm?: number | null;
+  targetShoulderCm?: number | null;
+  targetArmCm?: number | null;
   targetDate?: string | null;
   dailyCalorieTarget?: number | null;
 }
+
+/**
+ * Nguồn sự thật DUY NHẤT cho danh sách khoá. Quan trọng hơn bình thường ở đây
+ * vì `goalUpsertSchema` KHÔNG `.strict()`: khoá lạ bị strip im lặng, không có
+ * 400 nào. Quên một khoá = trường đó không bao giờ lưu được và không ai biết.
+ */
+const GOAL_PATCH_KEYS = [
+  'startWeightKg',
+  'startDate',
+  'targetWeightKg',
+  'targetWaistCm',
+  'targetChestCm',
+  'targetShoulderCm',
+  'targetArmCm',
+  'targetDate',
+  'dailyCalorieTarget',
+] as const;
 
 /**
  * Dựng patch từ body thô + kết quả đã validate.
@@ -49,9 +82,10 @@ export function toGoalPatch(rawBody: unknown, parsed: GoalUpsertRequest): GoalPa
   const body = (rawBody ?? {}) as Record<string, unknown>;
   const patch: GoalPatch = {};
 
-  if ('targetWeightKg' in body) patch.targetWeightKg = parsed.targetWeightKg ?? null;
-  if ('targetDate' in body) patch.targetDate = parsed.targetDate ?? null;
-  if ('dailyCalorieTarget' in body) patch.dailyCalorieTarget = parsed.dailyCalorieTarget ?? null;
+  for (const key of GOAL_PATCH_KEYS) {
+    if (!(key in body)) continue;
+    (patch as Record<string, unknown>)[key] = parsed[key] ?? null;
+  }
 
   return patch;
 }

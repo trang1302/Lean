@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Card, NumberInput } from '../../../components/ui';
 import type { BodyLog } from '../../../types/api';
+import { MEASURES, measureLabel } from '../../../constants/measures';
 import { useBodyLogForm } from '../hooks/useBodyLogForm';
 import s from './BodyLogForm.module.css';
 
@@ -15,7 +16,7 @@ interface BodyLogFormProps {
 }
 
 /**
- * Hai ô số, lưu khi blur — không có nút Lưu (SPEC §4). Toàn bộ ngữ nghĩa
+ * Năm ô số, lưu khi blur — không có nút Lưu (SPEC §4). Toàn bộ ngữ nghĩa
  * upsert 3 trạng thái + so sánh trước khi gửi nằm trong `useBodyLogForm`;
  * component này chỉ lắp UI.
  *
@@ -51,28 +52,38 @@ export function BodyLogForm({ date, bodyLog, isLoading }: BodyLogFormProps) {
           {fieldErrors.summary}
         </div>
       ) : null}
+
+      {/* Cân nặng đứng riêng một hàng: đơn vị khác bốn ô còn lại, và là số
+          người dùng nhìn nhiều nhất. Bốn vòng xếp lưới bên dưới. */}
       <div className={s.row}>
         <NumberInput
-          id="weightKg"
-          label="Cân nặng (kg)"
-          step="0.1"
-          value={form.weightValue}
-          onChange={(event) => form.onWeightChange(event.target.value)}
-          onBlur={form.onWeightBlur}
-          error={fieldErrors.fieldErrors['weightKg']}
-          disabled={isLoading}
-        />
-        <NumberInput
-          id="waistCm"
-          label="Vòng bụng (cm)"
-          step="0.1"
-          value={form.waistValue}
-          onChange={(event) => form.onWaistChange(event.target.value)}
-          onBlur={form.onWaistBlur}
-          error={fieldErrors.fieldErrors['waistCm']}
+          id={MEASURES[0].field}
+          label={measureLabel(MEASURES[0])}
+          step={MEASURES[0].step}
+          value={form.values[MEASURES[0].field]}
+          onChange={(event) => form.onChange(MEASURES[0].field, event.target.value)}
+          onBlur={() => form.onBlur(MEASURES[0].field)}
+          error={fieldErrors.fieldErrors[MEASURES[0].field]}
           disabled={isLoading}
         />
       </div>
+
+      <div className={s.grid}>
+        {MEASURES.slice(1).map((measure) => (
+          <NumberInput
+            key={measure.field}
+            id={measure.field}
+            label={measureLabel(measure)}
+            step={measure.step}
+            value={form.values[measure.field]}
+            onChange={(event) => form.onChange(measure.field, event.target.value)}
+            onBlur={() => form.onBlur(measure.field)}
+            error={fieldErrors.fieldErrors[measure.field]}
+            disabled={isLoading}
+          />
+        ))}
+      </div>
+
       <p className={s.hint} aria-live="polite">
         Để trống rồi rời ô để xóa giá trị.{form.savedField ? ' Đã lưu ✓' : ''}
       </p>

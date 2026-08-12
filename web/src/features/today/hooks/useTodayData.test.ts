@@ -19,7 +19,19 @@ afterEach(() => {
 });
 
 function goal(overrides: Partial<Goal> = {}): Goal {
-  return { targetWeightKg: null, targetDate: null, dailyCalorieTarget: null, updatedAt: null, ...overrides };
+  return {
+    startWeightKg: null,
+    startDate: null,
+    targetWeightKg: null,
+    targetWaistCm: null,
+    targetChestCm: null,
+    targetShoulderCm: null,
+    targetArmCm: null,
+    targetDate: null,
+    dailyCalorieTarget: null,
+    updatedAt: null,
+    ...overrides,
+  };
 }
 
 describe('useTodayData — chống race khi đổi date liên tiếp', () => {
@@ -44,6 +56,9 @@ describe('useTodayData — chống race khi đổi date liên tiếp', () => {
       date: '2026-08-07',
       weightKg: 71,
       waistCm: null,
+      chestCm: null,
+      shoulderCm: null,
+      armCm: null,
       note: null,
       createdAt: '',
       updatedAt: '',
@@ -54,6 +69,9 @@ describe('useTodayData — chống race khi đổi date liên tiếp', () => {
       date: '2026-08-06',
       weightKg: 999,
       waistCm: null,
+      chestCm: null,
+      shoulderCm: null,
+      armCm: null,
       note: null,
       createdAt: '',
       updatedAt: '',

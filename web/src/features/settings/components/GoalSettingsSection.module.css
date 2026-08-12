@@ -10,6 +10,17 @@
   gap: var(--space-4);
 }
 
+.groupHeading {
+  margin: 16px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.groupHeading:first-child {
+  margin-top: 0;
+}
+
 .field {
   display: flex;
   flex-direction: column;

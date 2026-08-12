@@ -10,6 +10,8 @@
 //      sẽ trả 400, SPEC §8.2).
 
 import { apiClient } from '../../../lib/apiClient';
+import { todayIso } from '../../../lib/format';
+import type { SummaryResponse } from '../../../types/api';
 import type {
   GoalPatch,
   GoalResponse,
@@ -58,19 +60,67 @@ export function fetchGoal(): Promise<GoalResponse> {
 }
 
 /**
- * Dựng patch bằng kiểu tường minh (`GoalPatch`), KHÔNG spread object nhận từ
- * `GET` — `goalUpsertSchema` không `.strict()` nên gõ sai tên trường sẽ
- * trả 200 im lặng, không có 400 nào để bắt lỗi chính tả (SPEC §3). Hàm này nhận
- * đúng những gì form đã map qua `numericInputToPatchValue`/
- * `textInputToPatchValue`, không nhận thẳng string thô của input.
+ * Mọi property của `GoalPatch` đều optional (`?`), nên gán/PASS một literal
+ * thiếu khoá vào kiểu `GoalPatch` compile sạch — TypeScript KHÔNG bắt được
+ * việc bỏ sót một khoá ở đó. `FullGoalPatch` vá đúng lỗ đó: bắt buộc đủ chín
+ * khoá phải CÓ MẶT, nhưng vẫn cho giá trị là `undefined` (input của hàm này
+ * hợp lệ khi là `undefined` — patch chỉ đổi các trường người dùng chạm tới).
+ *
+ * KHÔNG viết `{ [K in keyof GoalPatch]-?: GoalPatch[K] | undefined }` — trông
+ * đúng nhưng compile sai: `-?` trên mapped type kiểu này tự lọc sạch
+ * `undefined` khỏi giá trị luôn, kể cả khi mình cố thêm lại bằng
+ * `| undefined` (đã kiểm bằng `tsc` thật, không suy diễn). Cách dưới đây là
+ * lách qua bằng cách giao (`&`) một mapped type chỉ ép "khoá bắt buộc, giá
+ * trị `unknown`" với `GoalPatch` gốc để lấy lại kiểu giá trị thật.
+ */
+type FullGoalPatch = { [K in keyof GoalPatch]-?: unknown } & GoalPatch;
+
+/**
+ * Dựng patch bằng kiểu tường minh (`FullGoalPatch`), KHÔNG spread object nhận
+ * từ `GET` — `goalUpsertSchema` không `.strict()` nên gõ sai tên trường sẽ trả
+ * 200 im lặng, không có 400 nào để bắt lỗi chính tả (SPEC §3). Whitelist này
+ * cũng là chốt chặn ngăn caller lỡ spread thêm khoá lạ vào body.
+ *
+ * Liệt kê tay cả CHÍN khoá, cố ý không lặp: annotate `body` bằng
+ * `FullGoalPatch` (không phải `GoalPatch`) là chỗ TypeScript kiểm được rằng
+ * không khoá nào bị bỏ sót — xem định nghĩa `FullGoalPatch` ngay trên. Thêm
+ * trường mục tiêu mới mà quên dòng ở đây thì TypeScript báo lỗi ngay, không
+ * còn phải trông cậy vào việc tự nhớ.
  */
 export function updateGoal(patch: GoalPatch): Promise<GoalResponse> {
-  const body: GoalPatch = {
+  const body: FullGoalPatch = {
+    startWeightKg: patch.startWeightKg,
+    startDate: patch.startDate,
     targetWeightKg: patch.targetWeightKg,
+    targetWaistCm: patch.targetWaistCm,
+    targetChestCm: patch.targetChestCm,
+    targetShoulderCm: patch.targetShoulderCm,
+    targetArmCm: patch.targetArmCm,
     targetDate: patch.targetDate,
     dailyCalorieTarget: patch.dailyCalorieTarget,
   };
   return apiClient.put<GoalResponse>('/goal', body);
+}
+
+/**
+ * MA7 cân nặng của HÔM NAY, để form Mục tiêu điền sẵn ô "Cân nặng lúc bắt đầu".
+ *
+ * Đi qua `GET /api/summary` sẵn có thay vì thêm trường vào `/api/goal`: bắt
+ * `goal.service` tính MA7 là kéo dữ liệu `BodyLog` xuyên qua ranh giới feature,
+ * chỉ để tiện điền một ô nháp (spec §8.3). Cái giá là một request thừa ở trang
+ * Cài đặt — đã cân nhắc và chấp nhận.
+ *
+ * Khoảng ngày truyền vào KHÔNG ảnh hưởng kết quả: `summary.service` tính
+ * `currentMa7WeightKg` neo vào hôm nay bất kể `from`/`to`. Dùng `today..today`
+ * cho payload nhỏ nhất.
+ *
+ * `null` khi chưa đủ dữ liệu để có MA7 — form để ô trống, không bịa số.
+ */
+export function fetchCurrentMa7WeightKg(): Promise<number | null> {
+  const today = todayIso();
+  return apiClient
+    .get<SummaryResponse>(`/summary?from=${today}&to=${today}`)
+    .then((res) => res.goal.currentMa7WeightKg);
 }
 
 // ---------------------------------------------------------------------------

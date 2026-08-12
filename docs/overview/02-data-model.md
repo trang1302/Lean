@@ -55,13 +55,16 @@ datasource db {
 }
 
 model BodyLog {
-  userId    String
-  date      String                     // "YYYY-MM-DD", ngày theo giờ địa phương
-  weightKg  Float?
-  waistCm   Float?
-  note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId     String
+  date       String                     // "YYYY-MM-DD", ngày theo giờ địa phương
+  weightKg   Float?
+  waistCm    Float?
+  chestCm    Float?
+  shoulderCm Float?
+  armCm      Float?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@id([userId, date])
 }
@@ -82,7 +85,13 @@ model Meal {
 
 model Goal {
   userId             String   @id
+  startWeightKg      Float?
+  startDate          String?           // "YYYY-MM-DD" — điểm xuất phát, KHÔNG PHẢI DateTime
   targetWeightKg     Float?
+  targetWaistCm      Float?
+  targetChestCm      Float?
+  targetShoulderCm   Float?
+  targetArmCm        Float?
   targetDate         String?           // "YYYY-MM-DD"
   dailyCalorieTarget Int?
   updatedAt          DateTime @updatedAt
@@ -104,7 +113,8 @@ model Reminder {
 ### Ghi chú về mô hình
 
 - **`date` lưu dạng chuỗi `"YYYY-MM-DD"`, không dùng `DateTime`.** Đây là lựa chọn có chủ đích: "ngày tôi cân" là một ngày trên lịch, không phải một thời điểm. Lưu `DateTime` sẽ kéo theo lỗi lệch múi giờ (bản ghi lúc 7h sáng giờ Việt Nam bị lưu thành ngày hôm trước theo UTC). Chuỗi ngày loại bỏ hẳn cả nhóm lỗi này.
-- **`weightKg` và `waistCm` đều nullable.** Có ngày chỉ cân mà không đo bụng; không nên ép nhập cả hai mới lưu được.
+- **`weightKg`, `waistCm`, `chestCm`, `shoulderCm`, `armCm` đều nullable.** Có ngày chỉ cân mà không đo hết bốn vòng; không nên ép nhập đủ cả năm mới lưu được.
+- **`Goal.startDate` là chuỗi `"YYYY-MM-DD"`, không phải `DateTime`** — cùng lý do với `date` của `BodyLog`: đây là một ngày trên lịch (mốc xuất phát của % tiến độ, đợt `charts-mui`), không phải một thời điểm. `targetDate` giữ nguyên lý do tương tự nhưng validate ngược hướng — xem `../features/goal/SPEC.md` §5.
 - **`slot` là `String`, ràng buộc bằng Zod ở tầng controller**, không dùng Prisma enum (SQLite không hỗ trợ native enum, và `Todo/` đã đi theo hướng này).
 - **`Goal` chỉ có đúng một hàng cho mỗi người dùng**, khóa chính là `userId`, thao tác bằng `upsert`. (Spec gốc mô tả id cố định `"singleton"` — thay bằng `userId` khi thêm khóa người dùng.)
 - **`Reminder` unique theo `(userId, kind)`** — mỗi loại nhắc nhở chỉ có một cấu hình cho mỗi người dùng.
