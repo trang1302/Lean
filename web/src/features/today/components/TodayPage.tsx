@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useBlocker } from 'react-router';
 import { Card } from '../../../components/ui';
 import { ErrorState, LoadingState } from '../../../components/shared';
 import { todayIso } from '../../../lib/format';
@@ -26,6 +27,41 @@ export function TodayPage() {
   const [date, setDate] = useState(todayIso());
   const data = useTodayData(date);
 
+  const [isDirty, setIsDirty] = useState(false);
+
+  const CONFIRM_LEAVE = 'Có thay đổi chưa lưu ở khối Số đo. Vẫn rời đi?';
+
+  /** Lớp chặn 1 — đổi ngày. `useBlocker` KHÔNG bắt được ca này: đổi `date` không
+   * phải một lần điều hướng, không có URL nào thay đổi. */
+  function handleDateChange(next: string) {
+    if (isDirty && !window.confirm(CONFIRM_LEAVE)) return;
+    setDate(next);
+  }
+
+  /** Lớp chặn 2 — điều hướng trong app (bấm sang Biểu đồ / Cài đặt). */
+  const blocker = useBlocker(useCallback(() => isDirty, [isDirty]));
+
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    // `useBlocker` không tự hiện hộp thoại — nó chỉ dừng điều hướng và giao lại
+    // quyết định. Dùng `confirm` thay vì dựng modal riêng: dự án chưa có component
+    // dialog nào, dựng một cái cho đúng một chỗ dùng là abstraction thừa.
+    if (window.confirm(CONFIRM_LEAVE)) blocker.proceed();
+    else blocker.reset();
+  }, [blocker]);
+
+  /** Lớp chặn 3 — đóng tab / tải lại. Trình duyệt tự hiện cảnh báo mặc định;
+   * nội dung thông báo không tuỳ biến được và đó là chủ đích của trình duyệt. */
+  useEffect(() => {
+    if (!isDirty) return;
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
+
   const mealsShowLoading = data.mealsLoading && data.meals.length === 0 && !data.mealsError;
 
   return (
@@ -37,12 +73,17 @@ export function TodayPage() {
         định vị, họ không biết đang ở trang nào.
       */}
       <h1 className={s.heading}>Hôm nay</h1>
-      <DatePicker value={date} onChange={setDate} />
+      <DatePicker value={date} onChange={handleDateChange} />
 
       {data.bodyLogError ? (
         <ErrorState error={data.bodyLogError} onRetry={data.reloadBodyLog} />
       ) : (
-        <BodyLogForm date={date} bodyLog={data.bodyLog} isLoading={data.bodyLogLoading} />
+        <BodyLogForm
+          date={date}
+          bodyLog={data.bodyLog}
+          isLoading={data.bodyLogLoading}
+          onDirtyChange={setIsDirty}
+        />
       )}
 
       <Card heading="Bữa ăn">

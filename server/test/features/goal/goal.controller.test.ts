@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from '../../../src/app.js';
 import { prisma } from '../../../src/lib/db.js';
 import { LOCAL_USER_ID } from '../../../src/shared/constants.js';
+import { seedTestUsers } from '../../helpers/auth.js';
 import { addDays, todayIso } from '../../../src/lib/time.js';
 
 const app = createApp();
@@ -12,6 +13,7 @@ const TOMORROW = addDays(TODAY, 1);
 
 beforeEach(async () => {
   await prisma.goal.deleteMany();
+  await seedTestUsers();
 });
 
 afterAll(async () => {

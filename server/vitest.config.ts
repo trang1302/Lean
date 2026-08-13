@@ -15,7 +15,14 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.ts'],
     fileParallelism: false,
-    env: { DATABASE_URL: TEST_DATABASE_URL },
+    // `SESSION_SECRET` không có `.default()` trong `env.ts` (cố ý — fallback cho
+    // secret nghĩa là mọi bản triển khai dùng chung một khóa ký). Thiếu nó ở đây
+    // thì mọi test import `app.ts` chết ngay tại `envSchema.parse`.
+    env: {
+      DATABASE_URL: TEST_DATABASE_URL,
+      SESSION_SECRET: 'test-session-secret-at-least-32-characters-long',
+      NODE_ENV: 'test',
+    },
     globalSetup: ['./test/globalSetup.ts'],
   },
 });

@@ -23,46 +23,53 @@ function valuesFromLog(bodyLog: BodyLog | null): MeasureRecord<string> {
   ) as MeasureRecord<string>;
 }
 
+/**
+ * So NUMERIC, không so chuỗi: "72.40" và "72.4" là CÙNG một giá trị, nên gõ lại
+ * cùng số dưới dạng khác không được tính là thay đổi.
+ */
+function isUnchanged(raw: string, loadedValue: string): boolean {
+  const rawEmpty = raw.trim() === '';
+  const loadedEmpty = loadedValue.trim() === '';
+  if (rawEmpty && loadedEmpty) return true;
+  if (rawEmpty !== loadedEmpty) return false;
+  return Number(raw) === Number(loadedValue);
+}
+
 export interface UseBodyLogFormResult {
-  /** Giá trị đang gõ của cả năm ô, khóa theo tên trường. */
   values: MeasureRecord<string>;
   onChange: (field: MeasureField, value: string) => void;
-  onBlur: (field: MeasureField) => void;
-  /** Trường vừa lưu thành công, `null` sau đó (đổi ngày, hoặc ô khác vừa lưu).
-   * Chỉ để hiển thị "Đã lưu ✓" — KHÔNG phải cờ đang lưu. */
-  savedField: MeasureField | null;
-  /** Tăng dần mỗi lần một lần lưu (thành công hoặc lỗi) hoàn tất — trang gọi
-   * dùng để biết "vừa có một lần submit mới" và tự đưa focus về ô lỗi đầu tiên. */
+  /** Gom các ô ĐÃ SỬA thành MỘT request. Không có gì để gửi thì không gửi. */
+  save: () => Promise<void>;
+  /** Có ô nào khác giá trị đã nạp. Điều khiển nút Lưu và cả ba lớp chặn ở `TodayPage`. */
+  isDirty: boolean;
+  isSaving: boolean;
+  /** Vừa lưu xong — hiện "Đã lưu ✓". Tắt khi gõ tiếp hoặc đổi ngày. */
+  justSaved: boolean;
+  /** Tăng sau mỗi lần lưu hoàn tất (thành công hoặc lỗi) — `BodyLogForm` dùng để
+   * biết "vừa có một lần submit mới" và tự đưa focus về ô lỗi đầu tiên. */
   attemptTick: number;
   fieldErrors: UseFieldErrorsResult;
 }
 
 /**
- * State + hành vi của `BodyLogForm` — hiện thực SPEC §5.1 (upsert 3 trạng thái)
- * và §5.2 (lỗi 400 gắn vào đúng ô). Đây là chỗ rủi ro nhất của feature: gửi sai
- * một khóa là XÓA MẤT dữ liệu người dùng không đụng tới.
+ * State + hành vi của `BodyLogForm`. Đây là chỗ rủi ro nhất của cả web: endpoint
+ * dùng upsert 3 trạng thái, nên một khoá mang `null` nghĩa là XOÁ số đo đó. Gửi
+ * thừa một khoá rỗng là xoá dữ liệu người dùng không đụng tới, và KHÔNG có lỗi nào báo.
  *
- * Ba mảnh state giữ cho MỖI ô, tất cả khóa theo tên trường (trước đây viết tay
- * từng biến; với 5 số đo thì đó là 25 khai báo song song và 25 cơ hội gõ nhầm):
- * 1. giá trị đang gõ trên input (chuỗi thô, hiển thị trực tiếp);
- * 2. giá trị ĐÃ NẠP từ server lúc đồng bộ gần nhất (so sánh trước khi gửi);
- * 3. cờ "người dùng đã động vào ô này chưa" (ref, không phải state — chỉ cần
- *    đọc lúc blur, không cần re-render khi đổi).
+ * BẤT BIẾN (spec §2.1): payload chứa ĐÚNG những trường người dùng đã sửa, không hơn.
  *
- * Bốn luật gửi khi blur (SPEC §5.1) — KHÔNG đổi so với bản 2 ô:
- * - chưa từng động vào ô → KHÔNG gửi, bất kể giá trị;
- * - giá trị hiện tại không đổi so với lúc nạp, so NUMERIC ("72.40" và "72.4" là
- *   cùng một giá trị) → KHÔNG gửi. Không phải vì hiệu năng: `PUT` với patch
- *   không đổi vẫn bump `updatedAt` và có thể tạo bản ghi rỗng cho ngày chưa có gì;
- * - ô vừa bị xóa trắng (trước đó có giá trị) → gửi `{ [field]: null }`;
- * - ô có giá trị mới, hợp lệ (không `NaN`) → gửi `{ [field]: Number(raw) }`.
+ * Hai luật quyết định một trường có vào payload hay không:
+ * 1. không đổi so với lúc nạp (so NUMERIC) → KHÔNG vào. `PUT` với patch không đổi
+ *    vẫn bump `updatedAt` và có thể tạo bản ghi rỗng cho ngày chưa có gì.
+ * 2. xoá trắng ô trước đó có giá trị → vào payload là `null` (xoá).
+ * Cộng: giá trị `NaN` → bỏ qua ĐÚNG ô đó, các ô hợp lệ khác vẫn được gửi.
  *
- * Đồng bộ lại CẢ BA mảnh mỗi khi `date` đổi HOẶC `bodyLog` đổi — bao gồm cả lúc
- * `bodyLog` tạm thời còn là dữ liệu của ngày CŨ trong khi request của ngày MỚI
- * đang chạy (`useApiResource` cố ý giữ `data` cũ để tránh nhấp nháy). Trang gọi
- * (`BodyLogForm`) PHẢI disable các ô trong lúc `isLoading`, để không ai gõ/blur
- * vào giá trị của ngày cũ rồi gán nhầm cho ngày mới — hook này không tự chặn
- * được vì nó không biết `isLoading`.
+ * Luật cũ "chưa động vào ô thì không gửi" đã TAN vào luật 1 — một ô chưa ai chạm có
+ * `values[f] === loaded[f]`. Cờ `touched` vì thế bị xoá: nó không còn phân biệt được
+ * ca nào, và giữ một cờ không phân biệt được gì là để lại thứ người sau tưởng quan trọng.
+ *
+ * `loaded` là STATE chứ không phải ref: `isDirty` phải tính lại sau mỗi lần lưu thành
+ * công, mà gán vào ref không gây re-render nên nút Lưu sẽ sáng mãi.
  */
 export function useBodyLogForm(
   date: string,
@@ -70,57 +77,74 @@ export function useBodyLogForm(
   putBodyLog: (date: string, patch: BodyLogPatch) => Promise<BodyLog> = defaultPutBodyLog,
 ): UseBodyLogFormResult {
   const [values, setValues] = useState<MeasureRecord<string>>(() => fillRecord(''));
-  const [savedField, setSavedField] = useState<MeasureField | null>(null);
+  const [loaded, setLoaded] = useState<MeasureRecord<string>>(() => fillRecord(''));
+  const [isSaving, setIsSaving] = useState(false);
+  // Chốt chặn THẬT của "hai request chồng nhau" (§2.3, M2 báo cáo review) — `isSaving`
+  // ở trên là STATE, nên hai lệnh gọi `save()` trong CÙNG một tick (trước khi React
+  // commit) đều đọc cùng giá trị cũ và lọt qua cả hai. Ref đọc/ghi ĐỒNG BỘ, không đợi
+  // render, nên chặn được cả ca đó — `isSaving` state vẫn giữ lại riêng để render nút.
+  const isSavingRef = useRef(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [attemptTick, setAttemptTick] = useState(0);
-
-  const loaded = useRef<MeasureRecord<string>>(fillRecord(''));
-  const touched = useRef<MeasureRecord<boolean>>(fillRecord(false));
 
   const fieldErrors = useFieldErrors(KNOWN_FIELDS);
 
   useEffect(() => {
     const next = valuesFromLog(bodyLog);
     setValues(next);
-    loaded.current = next;
-    touched.current = fillRecord(false);
-    setSavedField(null);
+    setLoaded(next);
+    setJustSaved(false);
     fieldErrors.reset();
-    // `fieldErrors.reset` là hàm ổn định (useCallback rỗng deps) — không cần
-    // đưa vào deps, đưa vào không sai nhưng thừa.
+    // `fieldErrors.reset` là hàm ổn định (useCallback rỗng deps) — không cần deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, bodyLog]);
 
-  function isUnchanged(raw: string, loadedValue: string): boolean {
-    const rawEmpty = raw.trim() === '';
-    const loadedEmpty = loadedValue.trim() === '';
-    if (rawEmpty && loadedEmpty) return true;
-    if (rawEmpty !== loadedEmpty) return false;
-    return Number(raw) === Number(loadedValue);
+  const isDirty = MEASURE_FIELDS.some((field) => !isUnchanged(values[field], loaded[field]));
+
+  /** Các trường sẽ gửi. Tính tại chỗ gọi để không bao giờ lệch khỏi `isDirty`. */
+  function buildPatch(): BodyLogPatch {
+    const patch: BodyLogPatch = {};
+    for (const field of MEASURE_FIELDS) {
+      if (isUnchanged(values[field], loaded[field])) continue; // luật 1
+      const raw = values[field];
+      if (raw.trim() === '') {
+        patch[field] = null; // luật 2 — xoá
+        continue;
+      }
+      const num = Number(raw);
+      if (Number.isNaN(num)) continue; // bỏ qua đúng ô này, không hỏng cả lần lưu
+      patch[field] = num;
+    }
+    return patch;
   }
 
-  async function commit(field: MeasureField, raw: string) {
-    if (!touched.current[field]) return; // luật 1
-    if (isUnchanged(raw, loaded.current[field])) return; // luật 2
+  async function save(): Promise<void> {
+    // Chốt chặn nằm TRONG hook, không chỉ ở `disabled` của nút: hai request chồng
+    // nhau trên cùng một PUT upsert ghi đè lẫn nhau theo thứ tự PHẢN HỒI.
+    if (isSavingRef.current) return;
+    if (!isDirty) return;
 
-    let value: number | null;
-    if (raw.trim() === '') {
-      value = null; // luật 3
-    } else {
-      const num = Number(raw);
-      if (Number.isNaN(num)) return; // chặn NaN ở client (SPEC §5.4)
-      value = num; // luật 4
-    }
+    const patch = buildPatch();
+    // Mọi ô đã sửa đều là NaN → không còn gì hợp lệ để gửi.
+    if (Object.keys(patch).length === 0) return;
 
-    // Xóa lỗi cũ TRƯỚC khi gửi (SPEC §5.2) — lỗi tồn đọng của lần trước trên
-    // một ô đã sửa đúng không được hiển thị trong lúc chờ.
+    // Xoá lỗi cũ TRƯỚC khi gửi: lỗi tồn đọng của lần trước trên một ô đã sửa đúng
+    // không được hiển thị trong lúc chờ.
     fieldErrors.reset();
+    isSavingRef.current = true;
+    setIsSaving(true);
+    setJustSaved(false);
 
     try {
-      // Object literal ĐÚNG MỘT KHÓA. Đây là dòng quyết định của cả file:
-      // thêm bất cứ khóa nào khác vào đây là xóa dữ liệu của ô đó.
-      await putBodyLog(date, { [field]: value } as BodyLogPatch);
-      loaded.current = { ...loaded.current, [field]: raw };
-      setSavedField(field);
+      await putBodyLog(date, patch);
+      // Chỉ những ô THỰC SỰ gửi mới được coi là đã lưu. Ô NaN vẫn còn lệch, nên
+      // `isDirty` vẫn đúng là `true` sau đó — người dùng còn thứ chưa lưu thật.
+      setLoaded((prev) => {
+        const next = { ...prev };
+        for (const field of Object.keys(patch) as MeasureField[]) next[field] = values[field];
+        return next;
+      });
+      setJustSaved(true);
     } catch (err) {
       if (err instanceof ApiError) {
         fieldErrors.setError(err);
@@ -128,21 +152,23 @@ export function useBodyLogForm(
         throw err;
       }
     } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
       setAttemptTick((t) => t + 1);
     }
   }
 
   return {
     values,
-    savedField,
+    isDirty,
+    isSaving,
+    justSaved,
     attemptTick,
     fieldErrors,
+    save,
     onChange: (field: MeasureField, value: string) => {
-      touched.current[field] = true;
+      setJustSaved(false);
       setValues((prev) => ({ ...prev, [field]: value }));
-    },
-    onBlur: (field: MeasureField) => {
-      void commit(field, values[field]);
     },
   };
 }

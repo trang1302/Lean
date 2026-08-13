@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { prisma } from '../../src/lib/db.js';
 import { LOCAL_USER_ID } from '../../src/shared/constants.js';
+import { seedTestUsers } from '../helpers/auth.js';
 
 const OTHER_USER = 'someone-else';
 
@@ -9,6 +10,7 @@ beforeEach(async () => {
   await prisma.bodyLog.deleteMany();
   await prisma.goal.deleteMany();
   await prisma.reminder.deleteMany();
+  await seedTestUsers();
 });
 
 afterAll(async () => {

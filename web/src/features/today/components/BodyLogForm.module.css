@@ -21,6 +21,14 @@
   color: var(--color-text-muted);
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
 .formError {
   margin-bottom: var(--space-3);
   padding: var(--space-2) var(--space-3);

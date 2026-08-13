@@ -1,6 +1,11 @@
-// Mọi bảng mang cột `userId` ngay từ đầu dù bản này chưa có đăng nhập.
-// Hiện tại mọi bản ghi dùng hằng LOCAL_USER_ID trong src/shared/constants.ts.
-// Thêm auth sau = thay hằng đó bằng user lấy từ session, không phải migrate lại schema.
+// Mọi bảng mang cột `userId` ngay từ đầu. Nhờ vậy việc thêm auth (giai đoạn A,
+// đang làm) chỉ là đổi NGUỒN của `userId` — từ hằng LOCAL_USER_ID sang
+// `req.session.userId` — chứ không phải migrate lại schema.
+//
+// Bốn bảng dữ liệu giờ có khóa ngoại thật tới `User`. SQLite chỉ cưỡng chế khóa
+// ngoại khi `PRAGMA foreign_keys = ON`; chỗ bật nằm ở src/lib/db.ts, và
+// test/lib/schema.test.ts khóa hành vi đó lại. Gỡ pragma = quan hệ dưới đây
+// thành trang trí.
 //
 // `date` luôn là chuỗi "YYYY-MM-DD", KHÔNG BAO GIỜ là DateTime — xem CLAUDE.md.
 
@@ -22,6 +27,47 @@ datasource db {
   provider = "sqlite"
 }
 
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  displayName  String?
+  status       String    @default("active") // "active" | "disabled"
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions  Session[]
+  bodyLogs  BodyLog[]
+  meals     Meal[]
+  goal      Goal?
+  reminders Reminder[]
+}
+
+model Session {
+  id        String   @id // session id do express-session sinh
+  userId    String
+  data      String // payload phiên đã JSON.stringify
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  emailKey  String // email đã chuẩn hóa
+  ip        String
+  succeeded Boolean
+  createdAt DateTime @default(now())
+
+  @@index([emailKey, createdAt])
+  @@index([ip, createdAt])
+}
+
 model BodyLog {
   userId     String
   date       String
@@ -33,6 +79,8 @@ model BodyLog {
   note       String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, date])
 }
@@ -47,6 +95,8 @@ model Meal {
   note      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
 }
@@ -63,6 +113,8 @@ model Goal {
   targetDate         String?
   dailyCalorieTarget Int?
   updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Reminder {
@@ -73,6 +125,8 @@ model Reminder {
   enabled   Boolean  @default(false)
   ntfyTopic String?
   updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, kind])
 }

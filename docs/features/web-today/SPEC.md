@@ -37,7 +37,7 @@ Backend đã xong (239 test pass). Mọi endpoint dưới đây đều truy đư
 | # | Gọi | Khi nào | Nguồn hợp đồng |
 |---|---|---|---|
 | 1 | `GET /api/body-logs/:date` | mỗi khi `date` đổi | [`body-logs/SPEC.md`](../body-logs/SPEC.md) §2 |
-| 2 | `PUT /api/body-logs/:date` | blur ô cân nặng / vòng bụng | body-logs §2, §4 |
+| 2 | `PUT /api/body-logs/:date` | bấm nút Lưu số đo (§4, §5.1) | body-logs §2, §4 |
 | 3 | `GET /api/meals?date=` | mỗi khi `date` đổi, và sau mỗi lần ghi bữa | [`meals/SPEC.md`](../meals/SPEC.md) §2 |
 | 4 | `POST /api/meals` | bấm `[+]` ở form thêm nhanh | meals §2 |
 | 5 | `PATCH /api/meals/:id` | sửa một bữa | meals §2 |
@@ -142,7 +142,7 @@ xử lý đề nghị, và cái nào cần chốt với backend thì ghi rõ.
 | 2 | "tổng calo hôm nay" | Không endpoint nào trả tổng calo của một ngày ở dạng lẻ. `GET /summary?from=D&to=D` có `days[0].totalCalories`, nhưng kéo theo cả `weeks` và `goal` | Cộng ở client từ mảng `meals` — xem §7 câu hỏi 1 |
 | 3 | "mục tiêu ngày" | `GET /goal` → `dailyCalorieTarget`, có thể `null` | Gọi `GET /api/goal`. `null` → không vẽ thanh tiến độ (§6) |
 | 4 | "bộ chọn ngày để nhập bù" | Không có endpoint nào nói **hôm nay là ngày nào theo `Asia/Ho_Chi_Minh`**. Server chặn ngày tương lai bằng đồng hồ *của nó* | Client tự tính `todayIso()` từ đồng hồ máy. **Rủi ro thật**: máy đặt timezone lệch → client tưởng là hôm nay, server trả `400 date`. Xem §7 câu hỏi 4 |
-| 5 | "Lưu tự động khi rời khỏi ô (blur)" | Không có gì để lo về concurrency — nhưng `PUT` trả `200` cho **cả** tạo mới lẫn cập nhật, client không biết được nó vừa tạo hay vừa sửa | Không cần biết. Chỉ hiển thị "Đã lưu" |
+| 5 | "Lưu tự động khi rời khỏi ô (blur)" — **đã đổi ở task `today-save-button`**, giờ lưu bằng nút Lưu (§4, §5.1) | Không có gì để lo về concurrency — nhưng `PUT` trả `200` cho **cả** tạo mới lẫn cập nhật, client không biết được nó vừa tạo hay vừa sửa | Không cần biết đang tạo hay sửa. Hiện "Đã lưu ✓" sau khi bấm nút Lưu, không phải sau khi blur |
 | 6 | "mỗi dòng có nút **sửa**/xóa" | `PATCH /meals/:id` có đủ — **không thiếu**. Nhưng §7 không tả UX sửa (inline hay modal) | §7 câu hỏi 2 |
 | 7 | §7 không nhắc `note` | Cả `BodyLog` lẫn `Meal` đều **có** `note` trong hợp đồng | API rộng hơn §7. §7 câu hỏi 3 |
 | 8 | "Xử lý trạng thái rỗng" | Mục này của §7 **chỉ nói về biểu đồ** ("Cần ít nhất 2 ngày dữ liệu…"), không nói gì về trang Hôm nay | Trang Hôm nay phải tự chốt — §6 |
@@ -182,11 +182,23 @@ Ràng buộc từng khối:
 - **DatePicker** — `<input type="date">`, `max` = hôm nay tính ở client. Mặc định hôm nay.
   Đổi ngày → nạp lại (1) và (3); **không** nạp lại (7), mục tiêu không phụ thuộc ngày.
 - **BodyLogForm** — năm ô số (cân nặng, đứng riêng một hàng; bốn vòng — bụng, ngực, vai,
-  bắp tay — xếp lưới bên dưới), `step="0.1"`. Ghi bằng `PUT` khi **blur**, không có nút Lưu.
-  Mỗi ô ghi độc lập, mỗi lần blur là một request mang **đúng một khóa** (§5.1). Danh sách
-  năm trường không hard-code rải rác trong component — một nguồn duy nhất ở
-  `web/src/constants/measures.ts` (`MEASURES`), dùng chung cho cả nhãn hiển thị và vòng lặp
-  render ô.
+  bắp tay — xếp lưới bên dưới), `step="0.1"`. Ghi bằng nút **Lưu số đo**, không lưu khi
+  blur — người dùng gõ xong bao nhiêu ô tuỳ ý rồi tự bấm Lưu, một lần bấm gửi **một**
+  request mang mọi ô đã sửa (§5.1). Danh sách năm trường không hard-code rải rác trong
+  component — một nguồn duy nhất ở `web/src/constants/measures.ts` (`MEASURES`), dùng chung
+  cho cả nhãn hiển thị và vòng lặp render ô.
+
+  Bên cạnh nút có đúng một dòng chữ, ba trạng thái loại trừ nhau (`aria-live="polite"` để
+  trình đọc màn hình đọc được khi trạng thái đổi mà không cần focus lại):
+
+  | Trạng thái | Điều kiện | Chữ hiện |
+  |---|---|---|
+  | Vừa lưu xong | `justSaved` | "Đã lưu ✓" |
+  | Có thay đổi chưa lưu | `isDirty` (và chưa vừa lưu) | "Có thay đổi chưa lưu." |
+  | Sạch | còn lại | "Để trống một ô rồi bấm Lưu để xóa giá trị." |
+
+  Nút bị `disabled` khi `!isDirty || isSaving || isLoading` — không có gì để gửi, đang gửi,
+  hoặc đang tải dữ liệu ngày khác thì không cho bấm.
 - **MealList** — nhóm theo buổi. Buổi rỗng: xem §6. Mỗi dòng có `sửa` và `xóa`.
 - **MealQuickAddForm** — `[buổi ▾][tên món][calo][+]`. Sau khi `201`, xóa trắng `tên món`
   và `calo`, **giữ nguyên `buổi`** (người dùng thường nhập liền hai món cùng buổi), focus
@@ -212,7 +224,8 @@ Server phân biệt ba ca bằng toán tử `in` trên raw body, **không** bằ
 (body-logs §4, `dtos/bodyLogs.request.ts:62-64`). Nghĩa là hợp đồng này thật và chặt — và
 chính vì thế client sai là mất dữ liệu ngay.
 
-**Cách sai, kinh điển:** gom cả form rồi gửi một cục.
+**Cách sai, kinh điển:** gom cả form rồi gửi một cục, không phân biệt ô nào người dùng
+thực sự đụng tới.
 
 ```ts
 // ❌ TUYỆT ĐỐI KHÔNG
@@ -222,64 +235,82 @@ await putBodyLog(date, {
 });
 ```
 
-Kịch bản hỏng: ngày 05 đã có `waistCm = 88`. Người dùng mở trang, chỉ sửa cân nặng rồi
-blur. Ô vòng bụng **hiển thị 88** nhưng nếu state khởi tạo lỗi (hoặc `GET` trả `404` nên
+Kịch bản hỏng: ngày 05 đã có `waistCm = 88`. Người dùng mở trang, chỉ sửa cân nặng rồi bấm
+Lưu. Ô vòng bụng **hiển thị 88** nhưng nếu state khởi tạo lỗi (hoặc `GET` trả `404` nên
 form để rỗng — xem §6) thì `waist === ''` → gửi `waistCm: null` → **88 bị xóa**. Người
 dùng không chạm vào ô đó và cũng không được cảnh báo.
 
-**Cách đúng:** *một lần blur = một request mang đúng khóa của ô vừa blur.*
+**Bất biến thật của code:** *bấm Lưu = một request mang đúng những khóa người dùng đã
+sửa so với lúc nạp, không hơn.* Khác thời còn lưu-khi-blur, một lần bấm Lưu có thể gửi
+**nhiều** khóa cùng lúc (mỗi khóa là một ô đã sửa) — nhưng vẫn chỉ đúng những khóa đó,
+không phải cả năm.
+
+Hai luật quyết định một trường có vào payload hay không, cộng một luật phụ:
+
+1. **Không đổi so với lúc nạp (so numeric, không so chuỗi) → KHÔNG vào payload.** Gõ lại
+   "72.40" lên ô đang là "72.4" không tính là sửa. Lý do không phải hiệu năng: `PUT` với
+   patch không đổi vẫn **tạo bản ghi rỗng cho ngày chưa có gì** (repository dùng `upsert`,
+   `create: { userId, date, ...patch }`) và vẫn bump `updatedAt`.
+2. **Xóa trắng một ô đang có giá trị → vào payload là `null`** (xóa). Ô rỗng ngay từ đầu
+   mà không ai chạm tới thì rơi vào luật 1 (giá trị hiện tại === giá trị đã nạp, cả hai
+   đều rỗng) — không cần một cờ riêng để phân biệt hai ca này, xem giải thích dưới.
+3. **Cộng: giá trị `NaN`** (gõ chữ vào ô số) **→ bỏ qua đúng ô đó**, các ô hợp lệ khác
+   trong cùng lần Lưu vẫn được gửi. Một ô gõ sai không được phép chặn cả các ô gõ đúng.
 
 ```ts
-// ✔ ô nào blur thì chỉ gửi khóa của ô đó — MEASURE_FIELD là một trong năm
-// tên trường của MEASURES (constants/measures.ts), không chỉ hai như ví dụ
-// ❌ ở trên
-async function saveField(field: MeasureField, raw: string) {
-  const value = raw.trim() === '' ? null : Number(raw);
-  await putBodyLog(date, { [field]: value });   // đúng MỘT khóa trong body
+// Rút gọn từ useBodyLogForm.ts — buildPatch() chạy tại chỗ save() được gọi
+function buildPatch(): BodyLogPatch {
+  const patch: BodyLogPatch = {};
+  for (const field of MEASURE_FIELDS) {
+    if (isUnchanged(values[field], loaded[field])) continue;      // luật 1
+    const raw = values[field];
+    if (raw.trim() === '') { patch[field] = null; continue; }     // luật 2
+    const num = Number(raw);
+    if (Number.isNaN(num)) continue;                              // luật 3
+    patch[field] = num;
+  }
+  return patch;
 }
 ```
 
-Kèm hai quy tắc phụ:
-
-1. **Không gửi khi giá trị không đổi so với lúc nạp.** Blur qua một ô mà không sửa gì
-   không được sinh request. Giữ giá trị đã nạp trong một ref/state riêng (`loadedWeight`)
-   và so trước khi gửi. Lý do không phải hiệu năng: `PUT` với `{}` hoặc với giá trị y hệt
-   vẫn **tạo bản ghi rỗng cho ngày chưa có gì** (repository dùng `upsert`,
-   `create: { userId, date, ...patch }`) và vẫn bump `updatedAt`.
-2. **Ô rỗng ngay từ đầu và người dùng không gõ gì → không gửi.** "Rỗng vì chưa từng có"
-   khác "rỗng vì vừa bị xóa trắng". Chỉ ca thứ hai mới được gửi `null`.
-
-Nói cách khác: state của form phải mang thêm khái niệm **"ô này đã bị người dùng động
-vào chưa"**. Đây là điểm khác biệt duy nhất giữa một form đúng và một form ăn mất dữ liệu.
+**Vì sao cờ `touched` (thời lưu-khi-blur) đã biến mất:** luật cũ "chưa động vào ô thì
+không gửi" tan hoàn toàn vào luật 1 — một ô chưa ai chạm luôn có
+`values[field] === loaded[field]`, nên giữ thêm một cờ `touched` song song là giữ một
+thứ không còn phân biệt được ca nào mà luật 1 chưa xử lý được. Bỏ nó đi là bỏ đúng phần
+thừa, không phải bỏ sót.
 
 #### API thật của `useBodyLogForm` — bản đồ theo khóa, không phải năm biến song song
 
-Code đã chạy (`web/src/features/today/hooks/useBodyLogForm.ts`) hiện thực đúng nguyên tắc
-trên, nhưng gói cả năm ô vào **một hook** với hình dạng sau, thay vì năm cặp
-`[value, setValue]` viết tay:
+Code đã chạy (`web/src/features/today/hooks/useBodyLogForm.ts`) gói cả năm ô vào **một
+hook** với hình dạng sau, thay vì năm cặp `[value, setValue]` viết tay:
 
 ```ts
 interface UseBodyLogFormResult {
   values: Record<MeasureField, string>;      // giá trị đang gõ, khóa theo tên trường
   onChange: (field: MeasureField, value: string) => void;
-  onBlur: (field: MeasureField) => void;      // chạy đủ 4 luật ở trên cho ĐÚNG một field
-  savedField: MeasureField | null;            // trường vừa lưu thành công — chỉ để hiện "Đã lưu ✓"
-  attemptTick: number;                        // tăng sau mỗi lần blur hoàn tất, để trang tự
-                                               // đưa focus về ô lỗi đầu tiên
+  save: () => Promise<void>;                 // gom các ô ĐÃ SỬA thành MỘT request
+  isDirty: boolean;                          // có ô nào khác giá trị đã nạp — điều khiển
+                                              // nút Lưu VÀ cả ba lớp chặn ở TodayPage (§5.5)
+  isSaving: boolean;
+  justSaved: boolean;                        // vừa lưu xong — hiện "Đã lưu ✓", tắt khi gõ
+                                              // tiếp hoặc đổi ngày
+  attemptTick: number;                       // tăng sau mỗi lần lưu hoàn tất, để trang tự
+                                              // đưa focus về ô lỗi đầu tiên
   fieldErrors: UseFieldErrorsResult;
 }
 ```
 
 **Vì sao bản đồ theo khóa (`Record<MeasureField, T>`) thay vì biến riêng cho từng ô:** với
-hai ô, `weightValue`/`waistValue`/`loadedWeight`/`loadedWaist`/`touchedWeight`/`touchedWaist`
-còn đọc được. Với năm ô đó là mười lăm khai báo song song — và mười lăm cơ hội gõ nhầm tên
-biến giữa `weight` và `weightKg`. `MEASURE_FIELDS` (từ `constants/measures.ts`, xem §4) là
-nguồn liệt kê trường **duy nhất**; ba mảnh state nội bộ của hook (giá trị đang gõ, giá trị
-đã nạp, cờ "đã động vào") đều dựng bằng cách lặp qua nó, không viết tay từng trường.
+hai ô, `weightValue`/`waistValue`/`loadedWeight`/`loadedWaist` còn đọc được. Với năm ô đó
+là mười khai báo song song — và mười cơ hội gõ nhầm tên biến giữa `weight` và `weightKg`.
+`MEASURE_FIELDS` (từ `constants/measures.ts`, xem §4) là nguồn liệt kê trường **duy
+nhất**; hai mảnh state nội bộ của hook (giá trị đang gõ, giá trị đã nạp) đều dựng bằng
+cách lặp qua nó, không viết tay từng trường.
 
 `BodyLogForm` (component gọi hook) không biết gì về ngữ nghĩa 3 trạng thái hay so sánh
-"đã đổi chưa" — nó chỉ lặp qua `MEASURES` để render `NumberInput`, gọi
-`form.onChange`/`form.onBlur` với đúng `field`, và đọc lỗi từ `fieldErrors.fieldErrors[field]`.
+"đã đổi chưa" — nó chỉ lặp qua `MEASURES` để render `NumberInput`, gọi `form.onChange` với
+đúng `field`, gọi `form.save()` khi bấm nút Lưu, và đọc lỗi từ
+`fieldErrors.fieldErrors[field]`.
 
 ### 5.2 `400` kèm `fields[]` — gắn lỗi vào đúng ô, không đổ toast chung
 
@@ -351,6 +382,30 @@ duy nhất**, dùng chung cho cả dropdown `[buổi ▾]` và thứ tự nhóm 
   DatePicker để lọt) sẽ thấy danh sách rỗng bình thường rồi **`400` khi bấm `+`**. Đó là lý
   do `max` của DatePicker là bắt buộc, không phải trang trí.
 
+### 5.5 Bỏ lưu-khi-blur mở ra ba đường mất dữ liệu — phải chặn cả ba
+
+Đổi từ lưu-khi-blur sang bấm nút Lưu nghĩa là dữ liệu gõ rồi có thể **nằm im chưa lưu**
+trong `isDirty`. `TodayPage` chặn đúng ba đường thoát, không đường nào thay được đường
+kia vì chúng nằm ở ba lớp khác nhau:
+
+| # | Đường thoát | Vì sao lớp khác không bắt được | Cách chặn |
+|---|---|---|---|
+| 1 | Đổi ngày (`DatePicker`) | Không phải một lần điều hướng — không có URL nào đổi, `useBlocker` không thấy | `handleDateChange` tự kiểm `isDirty`, gọi `window.confirm` trước khi `setDate` |
+| 2 | Điều hướng trong app (bấm sang Biểu đồ / Cài đặt) | Đây LÀ một lần điều hướng của router, nhưng `beforeunload` không thấy điều hướng nội bộ | `useBlocker(() => isDirty)` dừng điều hướng, một `useEffect` hỏi `window.confirm` rồi gọi `proceed()`/`reset()` |
+| 3 | Đóng tab / tải lại trang | Không đi qua router | `beforeunload` — chỉ gắn listener khi `isDirty`, trình duyệt tự hiện hộp thoại mặc định (nội dung không tùy biến được, đó là chủ đích của trình duyệt) |
+
+Dùng `window.confirm` cho cả lớp 1 và 2, **không** dựng modal riêng: dự án chưa có
+component dialog nào, và dựng một cái cho đúng hai chỗ dùng là abstraction thừa (Rule 2,
+`CLAUDE.local.md`).
+
+`isDirty` truyền xuống từ `BodyLogForm` qua prop `onDirtyChange` — hook báo cho `TodayPage`
+biết mỗi khi có/hết thay đổi chưa lưu, `TodayPage` là nơi duy nhất giữ cả ba lớp chặn vì
+nó là nơi duy nhất biết cả `isDirty` (từ form) và `date`/điều hướng (từ router).
+
+Sạch (`isDirty === false`) thì không lớp nào được hỏi gì — hỏi thừa lúc không có gì để
+mất dạy người dùng bấm qua hộp thoại mà không đọc, và đến lúc thật sự có dữ liệu cần giữ
+thì lớp chặn không còn tác dụng.
+
 ## 6. Trạng thái rỗng
 
 §7 có mục "Xử lý trạng thái rỗng" nhưng **chỉ nói về biểu đồ**. Nguyên tắc rút ra được và áp
@@ -410,9 +465,11 @@ này, đừng để mặc định trôi vào code.
    ghi bữa sáng sẽ ra ba tiêu đề rỗng. Hiện đủ 4 buổi thì bố cục ổn định và nhắc người dùng
    còn thiếu; ẩn buổi rỗng thì danh sách gọn. *Đề nghị: hiện đủ 4, buổi rỗng để một dòng mờ.*
 
-6. **Blur có debounce không?** Tab qua 2 ô liên tiếp sinh 2 request. Với localhost thì không
-   đáng lo, nhưng nếu ô đang có lỗi `400` mà người dùng tab đi tab lại thì lỗi nhấp nháy.
-   *Đề nghị: không debounce; thay vào đó giữ lỗi trên ô cho tới lần gửi thành công kế tiếp.*
+6. ~~Blur có debounce không?~~ **Đã giải quyết, tiền đề không còn:** task `today-save-button`
+   bỏ hẳn lưu-khi-blur, chuyển sang nút Lưu số đo (§4, §5.1, §5.5) — không còn "tab qua 2 ô
+   sinh 2 request" vì tab qua ô không gửi gì cả, chỉ bấm Lưu mới gửi, và một lần bấm gửi
+   đúng một request mang mọi ô đã sửa. Lỗi tồn đọng vẫn giữ nguyên trên ô cho tới lần gửi
+   thành công kế tiếp (§5.2), không đổi so với đề nghị cũ.
 
 7. **`PUT` có tạo bản ghi rỗng cho ngày trắng không?** Repository dùng `upsert` với
    `create: { userId, date, ...patch }` (body-logs §4), nên `PUT` mang một patch rỗng **có

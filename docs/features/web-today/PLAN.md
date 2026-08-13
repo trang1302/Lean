@@ -81,7 +81,7 @@ web/src/features/today/
 └── components/
     ├── TodayPage.tsx                       # lắp ráp, giữ state `date`
     ├── DatePicker.tsx                      # <input type="date"> max = hôm nay
-    ├── BodyLogForm.tsx                     # 2 ô, lưu khi blur
+    ├── BodyLogForm.tsx                     # 5 ô, lưu bằng nút Lưu (không lưu khi blur)
     ├── MealList.tsx                        # nhóm theo buổi, nút sửa/xóa
     ├── MealRow.tsx                         # một dòng + chế độ sửa inline
     ├── MealQuickAddForm.tsx                # [buổi ▾][tên][calo][+]
@@ -149,25 +149,32 @@ nhóm lỗi cấp form; lỗi bị xóa sạch khi gọi `reset()`.
 
 ### Bước 3 — `hooks/useBodyLogForm.ts` + `components/BodyLogForm.tsx` *(bước rủi ro nhất)*
 
-Hiện thực đúng SPEC §5.1. Hook giữ, cho mỗi ô: giá trị đang gõ, giá trị **đã nạp từ server**,
-và cờ "người dùng đã động vào chưa".
+Hiện thực đúng SPEC §5.1. Hook giữ, cho mỗi ô: giá trị đang gõ, giá trị **đã nạp từ server**.
 
-Luật gửi khi blur:
-- giá trị không đổi so với lúc nạp → **không gửi request**;
-- ô rỗng và trước đó cũng rỗng → **không gửi**;
-- ô rỗng và trước đó có giá trị → gửi `{ [field]: null }`;
-- ô có giá trị mới → gửi `{ [field]: Number(raw) }`, chặn `NaN` ở client trước khi gửi.
+> **Cập nhật (task `today-save-button`):** kế hoạch ban đầu của bước này gửi request khi
+> **blur** và giữ một cờ "người dùng đã động vào chưa". Code thật gửi khi bấm **nút Lưu**
+> — một lần bấm gom MỌI ô đã sửa vào MỘT request — và cờ "đã động vào" bị xoá vì luật 1
+> dưới đây đã tự phân biệt được mọi ca cần phân biệt (SPEC §5.1, mục "vì sao cờ `touched`
+> đã biến mất"). Ba luật dưới đổi "blur" → "bấm Lưu", ý nghĩa giữ nguyên:
+
+Luật quyết định một trường có vào payload khi bấm Lưu:
+- giá trị không đổi so với lúc nạp → **không vào payload** (các ô khác đã sửa trong CÙNG
+  lần bấm vẫn vào bình thường);
+- ô rỗng và trước đó cũng rỗng → **không vào payload** (rơi vào luật trên);
+- ô rỗng và trước đó có giá trị → vào payload là `{ [field]: null }`;
+- ô có giá trị mới → vào payload là `{ [field]: Number(raw) }`, bỏ qua ĐÚNG ô đó nếu
+  `Number(raw)` là `NaN`, không chặn các ô hợp lệ khác trong cùng lần bấm.
 
 *Deliverable:* test component (SPEC §5.1 là hợp đồng, đây là bằng chứng):
-1. sửa cân nặng rồi blur → `putBodyLog` được gọi với **đúng `{ weightKg: … }`**, body
+1. sửa cân nặng rồi bấm Lưu → `putBodyLog` được gọi với **đúng `{ weightKg: … }`**, body
    **không chứa** khóa `waistCm`;
-2. ngày đã có `waistCm = 88`, chỉ sửa cân nặng → sau request, `waistCm` vẫn 88 (không có
-   khóa `waistCm` nào được gửi) — **test canh mất-dữ-liệu, bắt buộc có**;
-3. xóa trắng ô đang có giá trị rồi blur → gửi `{ waistCm: null }`;
-4. blur qua ô không sửa gì → **không có request nào**;
+2. ngày đã có `waistCm = 88`, chỉ sửa cân nặng rồi bấm Lưu → sau request, `waistCm` vẫn 88
+   (không có khóa `waistCm` nào được gửi) — **test canh mất-dữ-liệu, bắt buộc có**;
+3. xóa trắng ô đang có giá trị rồi bấm Lưu → gửi `{ waistCm: null }`;
+4. bấm Lưu khi chưa sửa gì → **không có request nào**;
 5. server trả `400` với `fields: [{ path: 'weightKg', … }]` → thông báo hiện **dưới ô cân
    nặng**, không phải toast, và ô có `aria-invalid`;
-6. `GET` trả `404` → hai ô rỗng, **không có thông báo lỗi nào** (SPEC §6).
+6. `GET` trả `404` → năm ô rỗng, **không có thông báo lỗi nào** (SPEC §6).
 
 ### Bước 4 — `hooks/useTodayData.ts`
 

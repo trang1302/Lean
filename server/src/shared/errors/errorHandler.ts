@@ -10,6 +10,19 @@ function toFieldErrors(error: ZodError): FieldError[] {
 }
 
 /**
+ * `csrf-csrf` ném `HttpError` riêng của nó, KHÔNG phải AppError — không nhận
+ * diện thì nó rơi vào nhánh 500 ở dưới và client thấy sai mã (auth/SPEC.md:320).
+ *
+ * `'EBADCSRFTOKEN'` là giá trị của bản đang cài (csrf-csrf@4.0.3, xác nhận trong
+ * `dist/`). Thư viện cho ghi đè qua `errorConfig.code` — nếu ai đó đặt giá trị
+ * khác ở `app.ts` thì phải sửa cả hàm này, nên đừng đặt.
+ */
+function isCsrfError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  return (err as { code?: unknown }).code === 'EBADCSRFTOKEN';
+}
+
+/**
  * Middleware lỗi cuối chuỗi. Express 5 tự chuyển lỗi từ handler async tới đây —
  * KHÔNG cần `express-async-errors`, và đừng bọc try/catch chỉ để nuốt lỗi.
  *
@@ -36,6 +49,14 @@ export function errorHandler(
         message: 'Dữ liệu gửi lên không hợp lệ',
         fields: toFieldErrors(err),
       },
+    });
+    return;
+  }
+
+  if (isCsrfError(err)) {
+    const appError = AppError.csrfFailed();
+    res.status(appError.status).json({
+      error: { code: appError.code, message: appError.message },
     });
     return;
   }

@@ -5,15 +5,14 @@ import { ApiError } from '../../../types/api';
 import type { BodyLog } from '../../../types/api';
 import { MEASURE_FIELDS, type MeasureField } from '../../../constants/measures';
 
-// Test canh giữ đúng bốn luật gửi của docs/features/web-today/SPEC.md §5.1 và
-// hợp đồng upsert 3 trạng thái. Mock `putBodyLog` truyền vào qua tham số thứ ba
-// (dependency injection), không vi.mock module, để khẳng định trực tiếp payload.
+// Bất biến của file này (spec §2.1): payload chứa ĐÚNG những trường người dùng
+// đã sửa, không hơn. Đây là bản kế thừa của luật "đúng một khoá" thời lưu-khi-blur
+// — cùng một điều: đừng đụng vào thứ người ta không đụng.
 //
-// QUAN TRỌNG: `bodyLog` phải được tạo ĐÚNG MỘT LẦN bên ngoài hàm factory của
-// `renderHook` — hook có `useEffect` phụ thuộc `bodyLog` theo REFERENCE; một
-// object mới mỗi lần render sẽ làm effect chạy lại vô hạn.
+// `bodyLog` phải tạo ĐÚNG MỘT LẦN ngoài factory của `renderHook`: hook có effect
+// phụ thuộc `bodyLog` theo REFERENCE; object mới mỗi render sẽ làm effect chạy vô hạn.
 
-const DATE = '2026-08-07';
+const DATE = '2026-08-12';
 
 function makeBodyLog(overrides: Partial<BodyLog> = {}): BodyLog {
   return {
@@ -24,14 +23,14 @@ function makeBodyLog(overrides: Partial<BodyLog> = {}): BodyLog {
     shoulderCm: null,
     armCm: null,
     note: null,
-    createdAt: '2026-08-07T00:00:00.000Z',
-    updatedAt: '2026-08-07T00:00:00.000Z',
+    createdAt: '2026-08-12T00:00:00.000Z',
+    updatedAt: '2026-08-12T00:00:00.000Z',
     ...overrides,
   };
 }
 
-/** Một ngày đã ghi đủ năm số đo — nền của mọi test "không được xoá". */
-const FULL_LOG_VALUES = {
+/** Ngày đã ghi đủ năm số đo — nền của mọi ca "không được đụng". */
+const FULL = {
   weightKg: 72.4,
   waistCm: 88,
   chestCm: 98,
@@ -39,154 +38,205 @@ const FULL_LOG_VALUES = {
   armCm: 32,
 } as const;
 
-describe('useBodyLogForm — TEST CANH MẤT DỮ LIỆU (bắt buộc)', () => {
-  it.each(MEASURE_FIELDS)(
-    'ngày đã có đủ 5 số đo, chỉ sửa %s → payload KHÔNG chứa bốn khoá kia',
-    async (field: MeasureField) => {
-      const put = vi.fn().mockResolvedValue(makeBodyLog(FULL_LOG_VALUES));
-      const initialLog = makeBodyLog(FULL_LOG_VALUES);
-      const { result } = renderHook(() => useBodyLogForm(DATE, initialLog, put));
+describe('useBodyLogForm — BẤT BIẾN: payload chứa đúng trường đã sửa', () => {
+  it('sửa 2/5 ô → payload có đúng 2 khoá đó, không có 3 khoá kia', async () => {
+    const put = vi.fn().mockResolvedValue(makeBodyLog(FULL));
+    const log = makeBodyLog(FULL);
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
 
-      act(() => result.current.onChange(field, '50'));
-      act(() => result.current.onBlur(field));
+    act(() => result.current.onChange('chestCm', '99'));
+    act(() => result.current.onChange('armCm', '33'));
+    await act(async () => { await result.current.save(); });
 
-      await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
-      expect(put).toHaveBeenCalledWith(DATE, { [field]: 50 });
+    expect(put).toHaveBeenCalledTimes(1);
+    const [, body] = put.mock.calls[0] as [string, Record<string, unknown>];
+    expect(Object.keys(body).sort()).toEqual(['armCm', 'chestCm']);
+    expect(body).toEqual({ chestCm: 99, armCm: 33 });
+  });
 
-      for (const call of put.mock.calls) {
-        const body = call[1] as Record<string, unknown>;
-        expect(Object.keys(body)).toEqual([field]);
-      }
+  it.each(MEASURE_FIELDS)('sửa mình %s → payload chỉ có khoá đó', async (field: MeasureField) => {
+    const put = vi.fn().mockResolvedValue(makeBodyLog(FULL));
+    const log = makeBodyLog(FULL);
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
 
-      // Giá trị hiển thị của bốn ô kia không hề đổi.
-      for (const other of MEASURE_FIELDS) {
-        if (other === field) continue;
-        expect(result.current.values[other]).toBe(String(FULL_LOG_VALUES[other]));
-      }
-    },
-  );
+    act(() => result.current.onChange(field, '50'));
+    await act(async () => { await result.current.save(); });
+
+    const [, body] = put.mock.calls[0] as [string, Record<string, unknown>];
+    expect(Object.keys(body)).toEqual([field]);
+  });
 });
 
-// Luật 1 (cờ `touched`) KHÔNG được kiểm độc lập ở đây, và không có cách nào
-// làm điều đó qua API công khai của hook: `values` chỉ có thể lệch khỏi
-// `loaded` thông qua `onChange`, mà `onChange` luôn đặt `touched = true` ngay
-// lúc đó (xem `useBodyLogForm.ts`); effect đồng bộ khi đổi `date`/`bodyLog`
-// đặt lại CẢ HAI cùng lúc. Vậy `touched === false` LUÔN kéo theo
-// `raw === loaded.current[field]` — trong ca dưới đây, luật 2 (giá trị không
-// đổi thì không gửi) đã đủ để chặn request TRƯỚC KHI luật 1 kịp có tác dụng.
-// Xóa cờ `touched` khỏi `commit()` sẽ KHÔNG làm test này đỏ.
-//
-// Cờ `touched` vẫn được giữ trong `useBodyLogForm.ts` làm phòng thủ LỚP HAI
-// chống refactor tương lai (vd. đổi cách so sánh của `isUnchanged`, hoặc thêm
-// một đường ghi `values` không đi qua `onChange`) — không phải một luật kiểm
-// được riêng bằng test hành vi qua API công khai hiện có.
-describe('useBodyLogForm — luật 1 (touched) là phòng thủ lớp hai, bị luật 2 che trong mọi ca gọi được qua API công khai', () => {
-  it.each(MEASURE_FIELDS)(
-    'blur %s mà chưa gõ gì → không request nào (ca này cũng thỏa luật 2, không chứng minh luật 1 riêng)',
-    async (field: MeasureField) => {
-      const put = vi.fn().mockResolvedValue(makeBodyLog());
-      const initialLog = makeBodyLog();
-      const { result } = renderHook(() => useBodyLogForm(DATE, initialLog, put));
+describe('useBodyLogForm — luật 1: không đổi thì không gửi', () => {
+  it('không sửa gì mà bấm Lưu → không request nào', async () => {
+    const put = vi.fn().mockResolvedValue(makeBodyLog());
+    const log = makeBodyLog(FULL);
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
 
-      act(() => result.current.onBlur(field));
+    await act(async () => { await result.current.save(); });
 
-      await new Promise((r) => setTimeout(r, 0));
-      expect(put).not.toHaveBeenCalled();
-    },
-  );
-});
+    expect(put).not.toHaveBeenCalled();
+  });
 
-describe('useBodyLogForm — luật 2: giá trị không đổi thì KHÔNG gửi', () => {
   it('gõ "72.40" lên ô đang là 72.4 → không gửi (so numeric, không so chuỗi)', async () => {
-    const put = vi.fn().mockResolvedValue(makeBodyLog({ weightKg: 72.4 }));
-    const initialLog = makeBodyLog({ weightKg: 72.4 });
-    const { result } = renderHook(() => useBodyLogForm(DATE, initialLog, put));
+    const put = vi.fn().mockResolvedValue(makeBodyLog());
+    const log = makeBodyLog({ weightKg: 72.4 });
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
 
     act(() => result.current.onChange('weightKg', '72.40'));
-    act(() => result.current.onBlur('weightKg'));
+    await act(async () => { await result.current.save(); });
 
-    await new Promise((r) => setTimeout(r, 0));
-    // Gửi patch không đổi vẫn bump `updatedAt` và có thể tạo bản ghi rỗng cho
-    // ngày chưa có gì — đó là lý do luật này tồn tại, không phải vì hiệu năng.
+    // PUT với patch không đổi vẫn bump `updatedAt` và có thể tạo bản ghi rỗng
+    // cho ngày chưa có gì — đó là lý do luật này tồn tại, không phải hiệu năng.
     expect(put).not.toHaveBeenCalled();
   });
 });
 
-describe('useBodyLogForm — luật 3: xoá trắng ô đang có giá trị → gửi null', () => {
-  it.each(MEASURE_FIELDS)('xoá trắng %s → gửi { [field]: null }', async (field: MeasureField) => {
+describe('useBodyLogForm — luật 2: xoá trắng ô đang có giá trị → gửi null', () => {
+  it.each(MEASURE_FIELDS)('xoá trắng %s → { [field]: null }', async (field: MeasureField) => {
     const put = vi.fn().mockResolvedValue(makeBodyLog());
-    const initialLog = makeBodyLog(FULL_LOG_VALUES);
-    const { result } = renderHook(() => useBodyLogForm(DATE, initialLog, put));
+    const log = makeBodyLog(FULL);
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
 
     act(() => result.current.onChange(field, ''));
-    act(() => result.current.onBlur(field));
+    await act(async () => { await result.current.save(); });
 
-    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
-    expect(put).toHaveBeenCalledWith(DATE, { [field]: null });
+    const [, body] = put.mock.calls[0] as [string, Record<string, unknown>];
+    expect(body).toEqual({ [field]: null });
   });
 });
 
-describe('useBodyLogForm — luật 4: giá trị mới hợp lệ → gửi số', () => {
-  it('gõ số mới vào ô rỗng → gửi Number(raw)', async () => {
-    const put = vi.fn().mockResolvedValue(makeBodyLog({ chestCm: 98 }));
-    const initialLog = makeBodyLog();
-    const { result } = renderHook(() => useBodyLogForm(DATE, initialLog, put));
-
-    act(() => result.current.onChange('chestCm', '98'));
-    act(() => result.current.onBlur('chestCm'));
-
-    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
-    expect(put).toHaveBeenCalledWith(DATE, { chestCm: 98 });
-  });
-
-  it('gõ chuỗi không phải số → không gửi (chặn NaN ở client)', async () => {
+describe('useBodyLogForm — NaN không được làm hỏng cả lần lưu', () => {
+  it('một ô NaN, một ô hợp lệ → chỉ ô hợp lệ vào payload', async () => {
     const put = vi.fn().mockResolvedValue(makeBodyLog());
-    const initialLog = makeBodyLog();
-    const { result } = renderHook(() => useBodyLogForm(DATE, initialLog, put));
+    const log = makeBodyLog();
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
 
     act(() => result.current.onChange('armCm', 'abc'));
-    act(() => result.current.onBlur('armCm'));
+    act(() => result.current.onChange('chestCm', '98'));
+    await act(async () => { await result.current.save(); });
 
-    await new Promise((r) => setTimeout(r, 0));
-    expect(put).not.toHaveBeenCalled();
+    const [, body] = put.mock.calls[0] as [string, Record<string, unknown>];
+    expect(body).toEqual({ chestCm: 98 });
   });
 });
 
-describe('useBodyLogForm — lỗi 400 gắn vào đúng ô', () => {
-  it('server trả lỗi trường chestCm → fieldErrors mang đúng khoá đó', async () => {
+describe('useBodyLogForm — isDirty', () => {
+  it('tắt lúc đầu, bật khi gõ, TẮT LẠI sau khi lưu xong', async () => {
+    const put = vi.fn().mockResolvedValue(makeBodyLog({ chestCm: 98 }));
+    const log = makeBodyLog();
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
+
+    expect(result.current.isDirty).toBe(false);
+
+    act(() => result.current.onChange('chestCm', '98'));
+    expect(result.current.isDirty).toBe(true);
+
+    await act(async () => { await result.current.save(); });
+    // Sai chỗ này thì nút Lưu sáng mãi sau khi đã lưu — spec §2.4.
+    await waitFor(() => expect(result.current.isDirty).toBe(false));
+  });
+
+  it('gõ rồi gõ trả lại giá trị cũ → isDirty tắt', () => {
+    const put = vi.fn().mockResolvedValue(makeBodyLog());
+    const log = makeBodyLog({ chestCm: 98 });
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
+
+    act(() => result.current.onChange('chestCm', '99'));
+    expect(result.current.isDirty).toBe(true);
+    act(() => result.current.onChange('chestCm', '98'));
+    expect(result.current.isDirty).toBe(false);
+  });
+});
+
+describe('useBodyLogForm — lưu hỏng', () => {
+  it('400 → lỗi gắn vào đúng ô, isDirty VẪN true', async () => {
     const put = vi
       .fn()
       .mockRejectedValue(
         new ApiError(400, 'VALIDATION_ERROR', 'sai', [{ path: 'chestCm', message: 'quá lớn' }]),
       );
-    const initialLog = makeBodyLog();
-    const { result } = renderHook(() => useBodyLogForm(DATE, initialLog, put));
+    const log = makeBodyLog();
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
 
     act(() => result.current.onChange('chestCm', '9999'));
-    act(() => result.current.onBlur('chestCm'));
+    await act(async () => { await result.current.save(); });
 
     await waitFor(() => expect(result.current.fieldErrors.fieldErrors['chestCm']).toBe('quá lớn'));
+    // Chưa lưu được thì vẫn còn thay đổi chưa lưu — ba lớp chặn ở TodayPage
+    // dựa vào cờ này, tắt nhầm là mất dữ liệu lúc rời trang.
+    expect(result.current.isDirty).toBe(true);
     expect(result.current.attemptTick).toBeGreaterThan(0);
   });
 });
 
-describe('useBodyLogForm — đồng bộ lại khi đổi ngày', () => {
-  it('bodyLog mới thay cả 5 ô và xoá cờ touched', async () => {
+describe('useBodyLogForm — chống bấm Lưu hai lần', () => {
+  it('gọi save() lần hai khi lần một chưa xong → chỉ một request', async () => {
+    let resolvePut: (v: BodyLog) => void = () => {};
+    const put = vi.fn().mockImplementation(
+      () => new Promise<BodyLog>((res) => { resolvePut = res; }),
+    );
+    const log = makeBodyLog();
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
+
+    act(() => result.current.onChange('chestCm', '98'));
+    // `!` bắt buộc: TS không thấy được rằng callback của `act` chạy đồng bộ ngay,
+    // nên nếu khai `let first: Promise<void>;` trần sẽ báo "used before assigned".
+    let first!: Promise<void>;
+    act(() => { first = result.current.save(); });
+    await waitFor(() => expect(result.current.isSaving).toBe(true));
+    await act(async () => { await result.current.save(); });
+
+    expect(put).toHaveBeenCalledTimes(1);
+    await act(async () => { resolvePut(makeBodyLog({ chestCm: 98 })); await first; });
+  });
+
+  // M2 (báo cáo review): `isSaving` là STATE, nên hai lệnh `save()` gọi trong CÙNG
+  // một tick (trước khi React commit lại) đều đọc cùng giá trị `isSaving === false`
+  // của render đó — chốt chặn thật phải nằm ở một ref đọc/ghi đồng bộ, không đợi render.
+  it('gọi save() hai lần trong CÙNG một tick (không đợi render giữa) → chỉ một request', async () => {
+    let resolvePut: (v: BodyLog) => void = () => {};
+    const put = vi.fn().mockImplementation(
+      () => new Promise<BodyLog>((res) => { resolvePut = res; }),
+    );
+    const log = makeBodyLog();
+    const { result } = renderHook(() => useBodyLogForm(DATE, log, put));
+
+    act(() => result.current.onChange('chestCm', '98'));
+
+    let first!: Promise<void>;
+    let second!: Promise<void>;
+    act(() => {
+      first = result.current.save();
+      second = result.current.save();
+    });
+
+    expect(put).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolvePut(makeBodyLog({ chestCm: 98 }));
+      await Promise.all([first, second]);
+    });
+  });
+});
+
+describe('useBodyLogForm — đồng bộ khi đổi ngày', () => {
+  it('bodyLog mới thay cả 5 ô, isDirty về false', async () => {
     const put = vi.fn().mockResolvedValue(makeBodyLog());
-    const firstLog = makeBodyLog(FULL_LOG_VALUES);
-    const secondLog = makeBodyLog({ date: '2026-08-08', weightKg: 70 });
+    const first = makeBodyLog(FULL);
+    const second = makeBodyLog({ date: '2026-08-13', weightKg: 70 });
 
     const { result, rerender } = renderHook(
       ({ date, log }: { date: string; log: BodyLog }) => useBodyLogForm(date, log, put),
-      { initialProps: { date: DATE, log: firstLog } },
+      { initialProps: { date: DATE, log: first } },
     );
 
-    expect(result.current.values.chestCm).toBe('98');
+    act(() => result.current.onChange('chestCm', '99'));
+    expect(result.current.isDirty).toBe(true);
 
-    rerender({ date: '2026-08-08', log: secondLog });
+    rerender({ date: '2026-08-13', log: second });
 
     await waitFor(() => expect(result.current.values.weightKg).toBe('70'));
     expect(result.current.values.chestCm).toBe('');
-    expect(result.current.savedField).toBeNull();
+    expect(result.current.isDirty).toBe(false);
   });
 });
