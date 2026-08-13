@@ -1,3 +1,12 @@
+// PHẢI là import đầu tiên. ESM đánh giá module theo thứ tự khai báo import, nên
+// dòng này chạy trước `./app.js` → trước `./config/env.js`, tức là `.env` đã nạp
+// xong khi `envSchema.parse` chạy. Đổi nó xuống dưới là làm tiến trình chết vì
+// thiếu SESSION_SECRET.
+//
+// Chỉ nạp ở ENTRY POINT, không nạp trong `config/env.ts`: test lấy env từ
+// `vitest.config.ts`, và nạp `.env` ở đó sẽ kéo theo DATABASE_URL trỏ vào
+// `data.db` thật — đúng thứ `test/globalSetup.ts` phải chặn cứng.
+import 'dotenv/config';
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { startReminderScheduler, stopReminderScheduler } from './features/reminders/index.js';

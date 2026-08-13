@@ -1,0 +1,78 @@
+import { Router, type Request, type Response } from 'express';
+import { AppError } from '../../../shared/errors/AppError.js';
+import { loginSchema, registerSchema } from '../dtos/auth.request.js';
+import { toSessionResponse } from '../dtos/auth.response.js';
+import * as authService from '../services/auth.service.js';
+
+export const authController = Router();
+
+/**
+ * Lớp DUY NHẤT của app được chạm `req.session`.
+ *
+ * API phiên của express-session là CALLBACK, không phải Promise. Quên await là
+ * tạo race: response trả về trước khi phiên kịp ghi xuống store, request kế
+ * tiếp thấy như chưa đăng nhập — lỗi chập chờn rất khó lần ra
+ * (auth/SPEC.md:190).
+ */
+function regenerateSession(req: Request): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((err) => (err ? reject(err) : resolve()));
+  });
+}
+
+function saveSession(req: Request): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
+}
+
+function destroySession(req: Request): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.destroy((err) => (err ? reject(err) : resolve()));
+  });
+}
+
+/** Đăng ký mở công khai. Vai trò gán cứng phía server ở giai đoạn B — KHÔNG đọc từ body. */
+authController.post('/register', async (req: Request, res: Response) => {
+  const input = registerSchema.parse(req.body ?? {});
+  res.status(201).json({ user: await authService.registerUser(input) });
+});
+
+authController.post('/login', async (req: Request, res: Response) => {
+  const input = loginSchema.parse(req.body ?? {});
+  const user = await authService.authenticate(input);
+
+  // Xoay session id TRƯỚC khi ghi userId. Không xoay thì id trước và sau đăng
+  // nhập là một, và kẻ tấn công ép nạn nhân dùng một id hắn biết rồi dùng lại
+  // chính id đó sau khi nạn nhân đăng nhập (auth/SPEC.md §7.4).
+  await regenerateSession(req);
+  req.session.userId = user.id;
+  await saveSession(req);
+
+  res.json(toSessionResponse(user, req.session.cookie.expires ?? null));
+});
+
+/** Idempotent: gọi khi không có phiên vẫn 204. */
+authController.post('/logout', async (req: Request, res: Response) => {
+  if (req.session?.userId) await destroySession(req);
+  res.clearCookie('lean.sid');
+  res.status(204).end();
+});
+
+/**
+ * Route này KHÔNG đi qua requireAuth (nó nằm trước requireAuth trong chuỗi
+ * app.ts), nên tự kiểm phiên.
+ */
+authController.get('/session', async (req: Request, res: Response) => {
+  const userId = req.session?.userId;
+  if (!userId) throw AppError.unauthorized();
+
+  const user = await authService.findPublicUserById(userId);
+  if (!user) {
+    // Phiên trỏ vào user đã bị xóa: hủy phiên rồi trả 401, đừng trả 500.
+    await destroySession(req);
+    throw AppError.unauthorized();
+  }
+
+  res.json(toSessionResponse(user, req.session.cookie.expires ?? null));
+});
