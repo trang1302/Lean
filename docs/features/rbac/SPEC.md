@@ -233,7 +233,7 @@ Ba trong bốn thứ đó nằm ngoài phạm vi RBAC. Đó chính là lý do n�
 
 | Tình huống | Mã | Ai quyết định |
 |---|---|---|
-| Không có phiên | `401 UNAUTHORIZED` | middleware auth ([`../auth/SPEC.md`](../auth/SPEC.md)) |
+| Chưa đăng nhập | `401 UNAUTHORIZED` | middleware auth ([`../auth/SPEC.md`](../auth/SPEC.md)) |
 | Đã đăng nhập, vai trò không có quyền cho endpoint này | `403 FORBIDDEN` | `permissionGuard` (§6) |
 | Có quyền, nhưng hàng đó thuộc người khác | `404 NOT_FOUND` | repository, qua `where: { id, userId }` |
 | Có quyền, hàng của mình nhưng chưa tồn tại | `404 NOT_FOUND` | repository |
@@ -335,7 +335,7 @@ chạy đều theo nó. Thêm một dạng thứ hai chỉ cho RBAC là buộc m
 // 403 — đã đăng nhập, vai trò không có quyền
 { "error": { "code": "FORBIDDEN", "message": "Vai trò hiện tại không có quyền log:manage" } }
 
-// 401 — không có phiên (do feature auth trả, ghi ở đây để đối chiếu)
+// 401 — chưa đăng nhập (do feature auth trả, ghi ở đây để đối chiếu)
 { "error": { "code": "UNAUTHORIZED", "message": "Cần đăng nhập" } }
 ```
 
@@ -588,8 +588,10 @@ Seed **chỉ đụng ba bảng RBAC**, không tạo user, không gán vai trò c
 
 Trước khi có auth, DB chỉ có dữ liệu của một người dùng cục bộ, `id = 'local'` (hằng đặt tên
 cho giá trị này từng nằm ở `server/src/shared/constants.ts`, đã xóa cùng file khi auth xong).
-Feature `auth` đã tạo bảng `User`; backfill phải đảm bảo có đúng một hàng `User` mang
-`id = 'local'` — nếu không, toàn bộ `BodyLog`/`Meal`/`Goal`/`Reminder` từ trước sẽ mồ côi.
+Kế hoạch ban đầu giả định backfill phải đảm bảo có đúng một hàng `User` mang `id = 'local'` —
+nếu không, toàn bộ `BodyLog`/`Meal`/`Goal`/`Reminder` từ trước sẽ mồ côi. Trên thực tế DB thật
+chưa có bản ghi nào mang `userId = 'local'` cần cứu, nên bước đó không xảy ra — xem
+[`06-open-questions.md`](../../overview/06-open-questions.md) Q13.
 
 Backfill (đã hiện thực ở `prisma/seed/rbac.seed.ts`): **tài khoản CŨ NHẤT nhận
 `SYSTEM_ADMIN`**, các tài khoản còn lại nhận `USER`. Vì tài khoản đầu là chủ máy, và vì phải

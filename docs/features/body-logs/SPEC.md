@@ -221,8 +221,8 @@ sẽ xóa bản ghi cùng ngày của người khác.
 Bốn test canh giữ ranh giới này bằng cách chèn bản ghi của `'someone-else'` cùng ngày:
 `GET /:date` trả 404 (`test:65-73`), `PUT` không đụng vào nó và tạo bản ghi thứ hai
 (`test:180-192`), `DELETE` trả 404 và không xóa (`test:265-274`), `GET /` bỏ qua
-(`test:327-341`). Chúng không phải test cho tính năng multi-user — chúng là bẫy chống
-regression cho ngày thêm auth.
+(`test:327-341`). Chúng không phải test cho tính năng multi-user — chúng từng là bẫy chống
+regression cho ngày thêm auth (auth nay đã xong).
 
 ## 6. Quyết định vượt spec
 

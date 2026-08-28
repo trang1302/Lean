@@ -206,7 +206,7 @@ Vì sao luật cứng đến vậy — bốn thứ **không thể** đúng nếu
 3. **CSRF token** (§4.2) phải gắn vào **mọi** request ghi. Bỏ sót một chỗ là một nút bấm trả
    `403` mà không ai hiểu vì sao.
 4. **`credentials: 'include'`** (§4.2). Thiếu nó thì trình duyệt không gửi cookie phiên và
-   **mọi** request trả `401` — một lỗi mà triệu chứng ("app không vào được") cách xa
+   **mọi** request trả `401` — một lỗi mà triệu chứng ("app không đăng nhập được") cách xa
    nguyên nhân (một dòng thiếu trong option của `fetch`).
 
 Hệ quả về file: `features/<tên>/api/<tên>.api.ts` là **chỗ duy nhất của mỗi trang biết đường
@@ -389,11 +389,11 @@ dấu, và một chỗ cho danh tính người dùng + **nút đăng xuất**.
 > **không phải sửa `web-settings/SPEC.md`**, và đăng xuất vốn là thao tác cấp ứng dụng chứ
 > không phải một mục cài đặt. Ghi lại ở §10 câu 3 để chủ dự án có thể đảo.
 
-`/login` **không** dùng `AppLayout` — không có tab để bấm khi không có phiên.
+`/login` **không** dùng `AppLayout` — không có tab để bấm khi chưa đăng nhập.
 
 ### 5.3 Route guard
 
-Ba route đầu yêu cầu phiên. Không có phiên → chuyển hướng `/login`, kèm đường dẫn đang muốn
+Ba route đầu yêu cầu phiên. Chưa đăng nhập → chuyển hướng `/login`, kèm đường dẫn đang muốn
 vào để đăng nhập xong quay lại đúng chỗ.
 
 Luồng khởi động, đúng thứ tự:
@@ -409,7 +409,7 @@ Luồng khởi động, đúng thứ tự:
 > ### Guard ở client CHỈ là trải nghiệm. Server vẫn phải chặn.
 >
 > Người dùng sửa JS trong DevTools, gọi thẳng API bằng `curl`, hoặc chỉ cần tắt JavaScript.
-> **Guard của `web-shell` không bảo vệ gì cả** — nó chỉ để người không có phiên không nhìn
+> **Guard của `web-shell` không bảo vệ gì cả** — nó chỉ để người chưa đăng nhập không nhìn
 > thấy một trang trống rồi ba thông báo lỗi `401`.
 >
 > Chốt chặn thật là `requireAuth` mắc **một lần** trước năm router dữ liệu trong

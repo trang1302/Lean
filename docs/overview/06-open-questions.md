@@ -328,7 +328,7 @@ trỏ tới hàng nào. Bảng `User` chưa tồn tại ([`02-data-model.md`](02
 **Vì sao cần quyết.** Đây là dữ liệu sức khỏe thật đã ghi tay hàng ngày — mất là mất hẳn, không
 tái tạo được. Ràng buộc khóa ngoại bật trước khi migrate sẽ làm hỏng hoặc chặn toàn bộ.
 
-**Cần trả lời.** Ai là chủ mới của đống dữ liệu đó — tạo sẵn một `User` cho chủ máy, hay để lần
+**Câu hỏi lúc đó.** Ai là chủ mới của đống dữ liệu đó — tạo sẵn một `User` cho chủ máy, hay để lần
 đăng ký đầu tiên nhận? Migrate tự động lúc khởi động hay bằng script chạy tay có xác nhận? Nếu
 người ta không muốn nhận thì xóa hay giữ mồ côi?
 
@@ -349,7 +349,7 @@ Nguồn: quyết định 2026-08-07.
 email, chống bot, luồng quên mật khẩu; admin cấp tài khoản thì cần màn hình quản trị và luồng
 mời. Chọn sai hướng rồi đổi là làm lại phần lớn `auth`.
 
-**Cần trả lời.** Mở đăng ký cho bất kỳ ai, hay đóng và chỉ admin tạo? Có trạng thái trung gian
+**Câu hỏi lúc đó.** Mở đăng ký cho bất kỳ ai, hay đóng và chỉ admin tạo? Có trạng thái trung gian
 (mời qua link, danh sách cho phép) không?
 
 Nguồn: quyết định 2026-08-07. Hình dạng cụ thể thuộc `../features/auth/SPEC.md`.
@@ -371,7 +371,7 @@ Nguồn: quyết định 2026-08-07. Hình dạng cụ thể thuộc `../feature
 "admin" mặc định-thấy-tất-cả là chuyện thường thấy trong phần mềm quản trị, và ở đây nó có nghĩa
 là một người xem được toàn bộ lịch sử cơ thể của người khác.
 
-**Cần trả lời.** Admin chỉ quản lý tài khoản và vai trò (khóa, đổi quyền, xóa) mà **không** đọc
+**Câu hỏi lúc đó.** Admin chỉ quản lý tài khoản và vai trò (khóa, đổi quyền, xóa) mà **không** đọc
 được số đo? Hay có đọc được, và nếu có thì trong trường hợp nào, người bị xem có được báo không,
 có ghi vết truy cập không? Câu trả lời quyết định `rbac` chia quyền theo "quản trị tài khoản" và
 "đọc dữ liệu sức khỏe" thành hai nhóm tách rời hay gộp một.

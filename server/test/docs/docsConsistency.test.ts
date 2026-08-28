@@ -10,6 +10,16 @@ import { fileURLToPath } from 'node:url';
  *
  * Nó không kiểm văn phong và không kiểm nội dung — chỉ kiểm những chuỗi mà sự
  * tồn tại của chúng ĐÃ LÀ sai, vì thứ chúng mô tả không còn tồn tại.
+ *
+ * Hai giới hạn LỚN, không chỉ REVERSED không hoàn hảo:
+ * (a) Chỉ quét file `.md`. Nợ tương đương trong `.ts`/`.prisma` (bình luận,
+ *     docstring) không bao giờ bị bắt — vd. comment đầu `schema.prisma` từng
+ *     nói "auth đang làm" rất lâu sau khi auth đã xong, và suite này xanh
+ *     suốt thời gian đó.
+ * (b) Ba file bị loại NGUYÊN VẸN khỏi `FILES` (xem `EXCLUDED` bên dưới):
+ *     `auth/SPEC.md`, `auth/PLAN.md`, `rbac/PLAN.md`. Nợ bên trong ba file đó
+ *     hoàn toàn vô hình với suite này — kể cả khi nó tự mâu thuẫn (banner nói
+ *     "chưa có code" trong khi một mục khác cùng file nói "đã xong").
  */
 
 // `fileURLToPath` chứ không `import.meta.dirname`: cái sau đòi Node >= 20.11,
@@ -92,10 +102,16 @@ function findAll(pattern: RegExp): Hit[] {
 }
 
 describe('tài liệu sống không được mô tả trạng thái trước khi có auth', () => {
-  it('quét được ít nhất 20 file — sai đường dẫn thì suite này xanh giả', () => {
+  it('quét được ít nhất 35 file, gồm vài file sentinel cụ thể — sai đường dẫn thì suite này xanh giả', () => {
     // Không có ca này thì một lỗi đường dẫn biến cả suite thành "0 file, 0 hit,
-    // xanh" — tệ hơn không có test.
-    expect(FILES.length).toBeGreaterThan(20);
+    // xanh" — tệ hơn không có test. Ngưỡng cũ (20) quá lỏng: thực tế có 42 file,
+    // nên một lỗi đường dẫn làm mất nửa kho tài liệu vẫn không bị bắt. Assert
+    // thêm vài file sentinel cụ thể để SCANNED/EXCLUDED lệch cũng bị bắt, không
+    // chỉ đếm số lượng.
+    expect(FILES.length).toBeGreaterThan(35);
+    const relFiles = FILES.map((f) => relative(REPO_ROOT, f));
+    expect(relFiles).toContain('AGENTS.md');
+    expect(relFiles).toContain(join('docs', 'overview', '04-conventions.md'));
   });
 
   it('không còn nhắc hằng LOCAL_USER_ID', () => {
@@ -105,7 +121,9 @@ describe('tài liệu sống không được mô tả trạng thái trước khi
   });
 
   it('không còn khẳng định app chưa có đăng nhập', () => {
-    expect(findAll(/(không|chưa)[*_\s]+(có[*_\s]+)?đăng nhập/i)).toEqual([]);
+    // Bắt buộc có chữ "có": "chưa đăng nhập" (không có "có") là cách mô tả ĐÚNG
+    // VÀ VĨNH VIỄN một request chưa mang phiên — không phải tàn dư tiền-auth.
+    expect(findAll(/(không|chưa)[*_\s]+có[*_\s]+đăng nhập/i)).toEqual([]);
   });
 
   it('không còn khẳng định app không có middleware xác thực', () => {

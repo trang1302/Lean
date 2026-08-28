@@ -8,7 +8,7 @@ trang Cài đặt.
 
 Ba vai trò chứ không phải hai — xem banner đầu [`SPEC.md`](SPEC.md).
 
-Verify: `cd server && npm test` (24 file, 429 test) · `cd web && npm test` (45 file, 301 test).
+Verify: `cd server && npm test` (25 file, 434 test) · `cd web && npm test` (45 file, 301 test).
 
 ### Trạng thái cũ (giữ để đối chiếu)
 
@@ -24,10 +24,13 @@ commit. Quy ước tài liệu của dự án là **code đúng, SPEC phải the
 
 ## 2. Phụ thuộc — `docs/features/auth/` phải xong trước
 
+*(Mục này mô tả trạng thái lúc viết kế hoạch, trước khi `auth` xong — giữ lại vì nó giải
+thích LÝ DO của thứ tự `auth` → `rbac`.)*
+
 **RBAC không khởi động được nếu chưa có auth.** Lý do hiển nhiên nhưng phải nói rõ: RBAC trả
-lời "người này có quyền gì", mà chưa có auth thì không có "người này". Hôm nay mọi request
-chạy dưới hằng `LOCAL_USER_ID = 'local'` (`server/src/shared/constants.ts:9`) — không có gì
-để phân quyền.
+lời "người này có quyền gì", mà chưa có auth thì không có "người này". Lúc đó mọi request
+chạy dưới hằng `LOCAL_USER_ID = 'local'` (`server/src/shared/constants.ts:9`, đã xóa khi
+auth xong) — không có gì để phân quyền.
 
 Bốn thứ **bắt buộc** phải có từ feature `auth` trước khi bước 5 của §3 bắt đầu:
 

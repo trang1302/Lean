@@ -1,11 +1,7 @@
 # Feature `auth` — Xác thực
 
-> **Tài liệu định hướng, chưa có code.** Khác với `SPEC.md` của các feature đã xong
-> (`goal`, `meals`, …) vốn mô tả hành vi thật của code đang chạy, file này mô tả **thứ sẽ
-> được xây**. Mọi tham chiếu `đường-dẫn:dòng` trong đây trỏ tới code **hiện có** — thứ sẽ
-> phải sửa — chứ không phải code của feature này.
->
-> Trạng thái thi công: xem [`PLAN.md`](PLAN.md) — **CHƯA BẮT ĐẦU**.
+**Đã có code (giai đoạn A–D, 2026-08-28).** Tài liệu này mô tả hành vi thật.
+Trạng thái triển khai ở [`PLAN.md`](PLAN.md).
 
 Liên quan: [`../../overview/01-architecture.md`](../../overview/01-architecture.md) (cấu trúc 4 lớp) ·
 [`../../overview/02-data-model.md`](../../overview/02-data-model.md) (vì sao mọi bảng đã có `userId`) ·

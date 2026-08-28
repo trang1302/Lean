@@ -21,7 +21,7 @@ Prisma
 
 Bất kỳ phép tính nào nằm ngoài `shared/stats/` là sai chỗ. Bất kỳ `Date`/`DateTime`
 nào chạm vào field `date` là bug múi giờ. Bất kỳ truy vấn nào thiếu `userId` là bug
-cách ly dữ liệu — kể cái khi tra theo khóa chính, vì `id` là cuid toàn cục nên `where: { id }` trần chạm được bản ghi của người khác.
+cách ly dữ liệu — kể cả khi tra theo khóa chính, vì `id` là cuid toàn cục nên `where: { id }` trần chạm được bản ghi của người khác.
 
 ## Quy trình
 

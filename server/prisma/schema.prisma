@@ -1,6 +1,7 @@
-// Mọi bảng mang cột `userId` ngay từ đầu. Nhờ vậy việc thêm auth (giai đoạn A,
-// đang làm) chỉ là đổi NGUỒN của `userId` — từ hằng LOCAL_USER_ID sang
-// `req.session.userId` — chứ không phải migrate lại schema.
+// Mọi bảng mang cột `userId` ngay từ đầu. Nhờ vậy việc thêm auth (đã xong, xem
+// docs/features/auth/) chỉ là đổi NGUỒN của `userId` — từ hằng LOCAL_USER_ID
+// (đã xóa) sang `req.user.id`, do `requireAuth` gắn — chứ không phải migrate
+// lại schema.
 //
 // Bốn bảng dữ liệu giờ có khóa ngoại thật tới `User`. SQLite chỉ cưỡng chế khóa
 // ngoại khi `PRAGMA foreign_keys = ON`; chỗ bật nằm ở src/lib/db.ts, và

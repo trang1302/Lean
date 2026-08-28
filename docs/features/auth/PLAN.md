@@ -1,6 +1,13 @@
 # Feature `auth` — Kế hoạch & trạng thái
 
-## 1. Trạng thái: **CHƯA BẮT ĐẦU**
+## 1. Trạng thái: **XONG** (2026-08-28)
+
+Các bước ở §2 đã có code và test — xem [`SPEC.md`](SPEC.md) §10 cho danh sách chỗ đã sửa
+và commit tương ứng.
+
+Verify: `cd server && npm test`.
+
+### Trạng thái cũ (giữ để đối chiếu)
 
 Chưa có dòng code nào. Chưa có file nào trong `server/src/features/auth/`.
 Tài liệu duy nhất là [`SPEC.md`](SPEC.md) cạnh file này.
@@ -32,8 +39,8 @@ Ranh giới trách nhiệm, giữ nghiêm:
 
 ### Phụ thuộc phía web — đang bị chặn
 
-`web/` **chưa tồn tại** (kiểm tra: không có thư mục `Lean/web`). Trang đăng nhập và route
-guard vì thế **không làm được ở giai đoạn này**. Chi tiết ở §5.
+Lúc viết kế hoạch này, `web/` **chưa tồn tại**. Trang đăng nhập và route guard vì thế
+**chưa làm được ở giai đoạn đó**. Chi tiết ở §5 và diễn biến thật ở Bước 11 dưới đây.
 
 ## 2. Các bước
 
@@ -374,9 +381,11 @@ sau đó reset bộ đếm; email **không tồn tại** cũng bị khóa sau N 
 
 ---
 
-### Bước 11 — Web: trang đăng nhập + route guard 🚫 **ĐANG BỊ CHẶN**
+### Bước 11 — Web: trang đăng nhập + route guard
 
-**`web/` chưa tồn tại.** Không có gì để sửa. Ghi ở đây để không ai tưởng đã xong.
+**Lúc viết bước này, `web/` chưa tồn tại** — không có gì để sửa, ghi lại để không ai tưởng
+đã xong. `web/` sau đó được dựng bởi feature `web-shell`; chi tiết thật ở
+[`../web-shell/PLAN.md`](../web-shell/PLAN.md).
 
 Khi `web/` được dựng (theo `docs/overview/01-architecture.md:50-62`), cần:
 
