@@ -22,6 +22,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..'
  *                      dự án từng trông như vậy".
  * - `.superpowers/`  — nhật ký làm việc của các đợt đã đóng.
  * - `auth/SPEC.md`   — §10 CHÍNH LÀ danh sách nợ này; nó phải được phép nhắc tên.
+ * - `auth/PLAN.md`   — plan mô tả thời điểm nó được viết, không phải hiện tại.
  * - `rbac/PLAN.md`   — giữ một khối "trạng thái cũ" để đối chiếu.
  * - `docs/superpowers/plans|specs` — plan và design doc mô tả thời điểm chúng
  *                      được viết, không phải hiện tại.
@@ -101,7 +102,7 @@ describe('tài liệu sống không được mô tả trạng thái trước khi
 
   it('không còn khẳng định app không có middleware xác thực', () => {
     expect(
-      findAll(/không có auth|Không có auth|không có middleware xác thực|chưa có auth/),
+      findAll(/không\s+(có\s+)?auth|chưa\s+(có\s+)?auth|không có middleware xác thực|không có xác thực|chưa có xác thực/i),
     ).toEqual([]);
   });
 
