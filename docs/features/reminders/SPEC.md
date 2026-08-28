@@ -111,10 +111,13 @@ model Reminder {
 `server/prisma/schema.prisma:59-70`
 
 Khóa là **kép**, không phải `kind` đơn. Mọi truy vấn đơn lẻ đi qua
-`where: { userId_kind: { userId: LOCAL_USER_ID, kind } }`
-(`reminders.repository.ts:43,59`) — không bao giờ tìm bằng `kind` trần. Đây là
-thứ giữ cho dữ liệu vẫn đúng khi có auth: grep `LOCAL_USER_ID` ra đúng danh sách
-chỗ cần thay bằng user từ session (`server/src/shared/constants.ts:9`).
+`where: { userId_kind: { userId, kind } }` — không bao giờ tìm bằng `kind` trần, vì `kind` một
+mình khớp hàng của **mọi** người dùng.
+
+Scheduler là ngoại lệ có chủ đích: nó chạy từ cron nên không có phiên, và dùng
+`findRemindersForAllUsers()` — một truy vấn lấy nhắc nhở đang bật của mọi user, mỗi hàng mang
+`userId` để gửi đúng topic. Gửi nhầm topic ở đây là rò dữ liệu sức khỏe sang người lạ, nên có
+suite riêng canh: `test/features/reminders/scheduler.multiUser.test.ts`.
 
 Repository là chỗ **duy nhất** của feature chạm Prisma; service và controller
 không import `prisma` (`reminders.repository.ts:4-10`).

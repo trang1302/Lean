@@ -23,7 +23,7 @@ Router được cắm ở prefix `/api/body-logs` (`server/src/app.ts:22`), expo
 | DTO | `dtos/bodyLogs.request.ts`, `dtos/bodyLogs.response.ts` | Schema Zod cho input, interface cho output |
 | Controller | `controllers/bodyLogs.controller.ts` | Validate → gọi service → chọn status. Không try/catch |
 | Service | `services/bodyLogs.service.ts` | Cắt `userId`, đổi `Date` sang ISO, ném `AppError.notFound` |
-| Repository | `repositories/bodyLogs.repository.ts` | **Lớp duy nhất** chạm `prisma`, mọi truy vấn mang `LOCAL_USER_ID` |
+| Repository | `repositories/bodyLogs.repository.ts` | **Lớp duy nhất** chạm `prisma`, mọi truy vấn mang `userId` (tham số đầu tiên của cả năm hàm) |
 
 Không lớp nào nhảy cóc: controller không biết Prisma, repository không biết HTTP.
 
@@ -191,8 +191,8 @@ khi tới repository: khóa có mặt (giá trị hoặc `null`) hoặc khóa kh
 ```ts
 // repositories/bodyLogs.repository.ts:38-42
 prisma.bodyLog.upsert({
-  where:  { userId_date: { userId: LOCAL_USER_ID, date } },
-  create: { userId: LOCAL_USER_ID, date, ...patch },
+  where:  { userId_date: { userId, date } },
+  create: { userId, date, ...patch },
   update: patch,
 });
 ```
@@ -208,16 +208,15 @@ hai nhánh vì `prisma.upsert` không nói nó đã làm nhánh nào.
 ## 5. Cách ly `userId`
 
 Khóa chính của `BodyLog` là **`@@id([userId, date])`** (`server/prisma/schema.prisma:33`),
-không phải `date` một mình. Mọi truy vấn trong repository mang `LOCAL_USER_ID`:
+không phải `date` một mình. `userId` là **tham số đầu tiên** của cả năm hàm repository:
 
-- `findByDate` / `upsertByDate` → `where: { userId_date: { userId: LOCAL_USER_ID, date } }`
-  (`repositories/bodyLogs.repository.ts:13-15`)
-- `findInRange` → `where: { userId: LOCAL_USER_ID, date: { gte, lte } }` (`:23-26`)
-- `deleteByDate` → `where: { userId: LOCAL_USER_ID, date }` (`:49-51`)
+- `findByDate(userId, date)` / `upsertByDate(userId, date, patch)` → `where: { userId_date: { userId, date } }`
+- `findInRange(userId, from, to)` → `where: { userId, date: { gte, lte } }`
+- `deleteByDate(userId, date)` → `where: { userId, date }`
 
-`LOCAL_USER_ID = 'local'` (`shared/constants.ts:9`). Bản này chưa có auth, nhưng lược đồ
-đã mang cột `userId` từ đầu để thêm auth sau là **thay hằng**, không phải migrate lại.
-Grep `LOCAL_USER_ID` ra đúng danh sách chỗ cần sửa.
+Giá trị `userId` đến từ `req.user!.id`, do `requireAuth` gắn. `deleteMany` thay cho `delete` ở
+hàm cuối vừa tránh phải bắt `P2025`, vừa **là lớp cách ly hàng**: `delete({ where: { date } })`
+sẽ xóa bản ghi cùng ngày của người khác.
 
 Bốn test canh giữ ranh giới này bằng cách chèn bản ghi của `'someone-else'` cùng ngày:
 `GET /:date` trả 404 (`test:65-73`), `PUT` không đụng vào nó và tạo bản ghi thứ hai

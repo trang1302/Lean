@@ -12,7 +12,7 @@ Không có file nào. Thư mục `web/` **chưa tồn tại** trong repo (`ls Le
 | `web/src/router/` + layout + 3 tab | ❌ chưa có |
 | `web/src/features/auth/` (đăng nhập, guard, `hasPermission`) | ❌ chưa có — **chờ backend `auth`** |
 | Backend `body-logs` `meals` `goal` `summary` `reminders` | ✅ xong, 208 test pass |
-| Backend `auth` `rbac` | ❌ **chưa có dòng code nào** — mới có SPEC + PLAN |
+| Backend `auth` `rbac` | ✅ xong — giai đoạn A→D đã hoàn thành |
 
 Đọc [`SPEC.md`](SPEC.md) trước khi làm bước nào. Hai mục không được đọc lướt: **§4** (luật
 `apiClient`) và **§8** (hệ quả của việc không dùng thư viện state).
@@ -59,10 +59,9 @@ Nhắc lại từ [`SPEC.md`](SPEC.md) §1.1, vì đây là chỗ dễ trôi nh�
 
 ## 3. Quan hệ với `auth` — chia đôi kế hoạch
 
-Backend `auth` **chưa có dòng code nào** ([`auth/PLAN.md`](../auth/PLAN.md) §1), và
-`auth/PLAN.md` Bước 11 (*trang đăng nhập + route guard*) đang ghi **🚫 ĐANG BỊ CHẶN** vì
-`web/` chưa tồn tại. Hai bên chặn nhau chéo. Cách gỡ: **`web-shell` làm phần không cần API
-trước.**
+Backend `auth` giờ **đã xong** ([`auth/PLAN.md`](../auth/PLAN.md) §1). Lúc viết kế hoạch này,
+`auth` chưa bắt đầu và `web/` cũng chưa tồn tại nên hai bên chặn nhau chéo — cách gỡ khi đó:
+**`web-shell` làm phần không cần API trước.**
 
 | Làm được NGAY (không cần backend `auth`) | Phải CHỜ backend `auth` |
 |---|---|
@@ -475,5 +474,5 @@ nhưng việc thi công `auth` là [`auth/PLAN.md`](../auth/PLAN.md), không ph�
 | 4 | Chưa có test e2e (Playwright) | Luồng đáng nhất là *đăng nhập → hết phiên → bị đá về `/login`*, và nó thuộc `web-shell`. Đề nghị: không làm ở bản đầu — [`SPEC.md`](SPEC.md) §10 câu 8 |
 | 5 | Kiểu trong `types/api.ts` chép tay, không sinh tự động | Đổi response ở backend mà quên sửa đây → lỗi câm ở runtime, `tsc` không bắt được |
 | 6 | `apiClient` không có timeout | Vô hại trên localhost; xét lại cùng lúc với [`SPEC.md`](SPEC.md) §10 câu 6 (deploy tách) |
-| 7 | Bước 8–11 chặn bởi backend `auth`, mà `auth` **chưa bắt đầu** và có 3 câu hỏi chặn của riêng nó ([`auth/PLAN.md`](../auth/PLAN.md) §4) | `web-shell` Bước 1–7 và cả ba trang **không** chờ. Kịch bản thực tế: cả bốn feature web chạy xong trên một app **chưa có đăng nhập**, rồi Bước 8–11 khoác auth lên sau. Đúng ý — miễn là ba chỗ móc ở §3 được chừa từ Bước 3 |
+| 7 | Bước 8–11 từng chặn bởi backend `auth` lúc `auth` **chưa bắt đầu** ([`auth/PLAN.md`](../auth/PLAN.md) §4); giờ `auth` đã xong nên hết chặn | `web-shell` Bước 1–7 và cả ba trang không phải chờ. Kịch bản đã xảy ra đúng như dự kiến: cả bốn feature web chạy xong trước, rồi Bước 8–11 khoác auth lên sau. Ba chỗ móc ở §3 đã được chừa từ Bước 3 |
 | 8 | Chưa chốt CSS | Bước 5 là chỗ đầu tiên phải viết. [`SPEC.md`](SPEC.md) §10 câu 7 |

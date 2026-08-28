@@ -22,7 +22,7 @@ Bốn lớp, mỗi lớp một trách nhiệm, ranh giới không được xuyê
 |---|---|---|
 | `server/src/features/goal/index.ts` | router | Gom controller vào `goalRouter`; `app.ts:23` cắm ở prefix `/api/goal`, path bên trong tương đối |
 | `server/src/features/goal/controllers/goal.controller.ts` | HTTP | `GET /` và `PUT /`. Parse Zod, gọi service, trả JSON. Không try/catch — Express 5 tự đẩy lỗi async sang `errorHandler` (`:18-20`). Truyền **cả body thô lẫn kết quả parse** vào `toGoalPatch` (`:24`) vì sau parse thì mất dấu "vắng mặt vs null" |
-| `server/src/features/goal/services/goal.service.ts` | nghiệp vụ | Gắn `LOCAL_USER_ID` (`:1,11,16`) — điểm duy nhất phải sửa khi thêm auth. Map row sang response DTO |
+| `server/src/features/goal/services/goal.service.ts` | nghiệp vụ | Nhận `userId` từ controller (đã đổi ở giai đoạn A — trước đó là hằng). Map row sang response DTO |
 | `server/src/features/goal/repositories/goal.repository.ts` | dữ liệu | **Chỗ duy nhất** của feature import `prisma` (`:1`). `findGoal` theo `userId` (khóa chính), `upsertGoal` với `create`/`update` cùng một `patch` |
 | `server/src/features/goal/dtos/goal.request.ts` | DTO vào | `goalUpsertSchema` (Zod, `.partial()` + `.nullable()`) và `toGoalPatch()` — hàm dựng patch ba trạng thái bằng `key in rawBody` |
 | `server/src/features/goal/dtos/goal.response.ts` | DTO ra | `GoalRow` (khai lại tại chỗ để DTO không phụ thuộc client Prisma sinh ra, `:1-7`) và `toGoalResponse()` — chỗ hiện thực quy tắc "chưa đặt → object toàn `null`, không 404" |
@@ -35,7 +35,6 @@ Không có file nào của feature này nằm ngoài `server/src/features/goal/`
 Dùng lại từ `shared/`, **không** khai lại:
 
 - `weightKgSchema`, `dateString`, `caloriesSchema` — `server/src/shared/validation/commonSchemas.ts:21,8,23`
-- `LOCAL_USER_ID` — `server/src/shared/constants.ts:9`
 - `errorHandler` — `server/src/shared/errors/errorHandler.ts`
 
 ## 3. Lệnh verify

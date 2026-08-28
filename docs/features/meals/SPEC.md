@@ -64,7 +64,7 @@ Mọi response lỗi theo hình dạng chung của `server/src/shared/errors/err
 
 **`GET /api/meals?date=`** (`controllers/meals.controller.ts:25-28`)
 
-- Trả mảng các bữa ăn của `LOCAL_USER_ID` trong đúng ngày đó, sắp xếp `createdAt` tăng dần (`repositories/meals.repository.ts:37`).
+- Trả mảng các bữa ăn của người đang gọi trong đúng ngày đó, sắp xếp `createdAt` tăng dần (`repositories/meals.repository.ts:37`).
 - Ngày chưa ghi bữa nào → `200 []`, **không phải `404`**. Đây là danh sách, danh sách rỗng là trạng thái hợp lệ.
 - Bữa ăn của `userId` khác → không lọt vào kết quả (`repositories/meals.repository.ts:35`), test dòng `90-97`.
 - Nhiều bữa cùng ngày cùng `slot` đều tồn tại song song, không đè lên nhau — không có ràng buộc unique nào trên `(userId, date, slot)` trong `prisma/schema.prisma:37-49`.
@@ -72,7 +72,7 @@ Mọi response lỗi theo hình dạng chung của `server/src/shared/errors/err
 **`POST /api/meals`** (`controllers/meals.controller.ts:30-33`)
 
 - Tạo bản ghi mới, `id` do Prisma sinh (`cuid()`), trả `201`.
-- `userId` luôn được server gán từ `LOCAL_USER_ID` (`services/meals.service.ts:12,20`); trường `userId` client gửi lên bị Zod loại bỏ (schema không `.strict()` nên khóa lạ bị *strip*, không báo lỗi) — test dòng `260-274`.
+- `userId` luôn được server gán từ phiên (`req.user!.id`, truyền xuống service làm tham số đầu tiên); trường `userId` client gửi lên bị Zod loại bỏ (schema không `.strict()` nên khóa lạ bị *strip*, không báo lỗi) — test dòng `260-274`.
 - `note` vắng mặt → lưu `null` (`repositories/meals.repository.ts:53`).
 
 **`PATCH /api/meals/:id`** (`controllers/meals.controller.ts:35-41`)
@@ -188,13 +188,15 @@ Không có chỗ nào code **mâu thuẫn** với spec; mọi khác biệt đề
 
 ## 6. Cách ly `userId` — phần quan trọng nhất
 
-App chưa có đăng nhập. Mọi thao tác chạy dưới hằng `LOCAL_USER_ID = 'local'` (`server/src/shared/constants.ts:9`), lấy qua một điểm duy nhất là `currentUserId()` ở `services/meals.service.ts:12`. Dù vậy, **mọi truy vấn trong repository đều mang `userId`** — kể cả khi tra theo `id` vốn đã là khóa chính.
+`userId` đến từ phiên đăng nhập, controller truyền xuống service làm tham số đầu tiên. **Mọi
+truy vấn trong repository đều mang `userId`** — kể cả khi tra theo `id` vốn đã là khóa chính.
+`Meal.id` là cuid toàn cục nên `where: { id }` trần chạm được bản ghi của người khác.
 
 ### Vì sao điều này bắt buộc với `meals` mà không bắt buộc với `body-logs`
 
 `body-logs` định danh bằng `date`, và `date` một mình đã vô nghĩa nếu thiếu `userId` — không ai viết được câu truy vấn `where: { date }` mà tưởng nó an toàn. `Meal.id` thì khác: nó là **cuid toàn cục**, `where: { id }` trần *chạy được*, *trả đúng một bản ghi*, và *trông hoàn toàn hợp lý* — chỉ là nó có thể là bản ghi của người khác.
 
-Hôm nay chỉ có một người dùng nên không ai thấy hậu quả. Ngày thêm auth, mỗi chỗ dùng `where: { id }` trần trở thành **lỗ hổng cho phép sửa hoặc xóa bữa ăn của người dùng khác** chỉ bằng cách đoán hoặc lộ một `id`. Đó chính là lý do cột `userId` tồn tại từ đầu dù chưa có auth.
+Giờ đã có nhiều người dùng qua auth: mỗi chỗ dùng `where: { id }` trần sẽ là **lỗ hổng cho phép sửa hoặc xóa bữa ăn của người dùng khác** chỉ bằng cách đoán hoặc lộ một `id`. Đó chính là lý do cột `userId` tồn tại từ đầu — trước cả khi có auth — và giờ là lớp cách ly bắt buộc, không phải tùy chọn.
 
 ### Cách code thực hiện: điều kiện nằm trong câu lệnh ghi
 
@@ -234,8 +236,10 @@ Truy cập bản ghi của user khác luôn là `404`, không phải `403`, và 
 
 `404` thay vì `403` là cố ý: `403` xác nhận "id này có tồn tại, chỉ là không phải của bạn" — một rò rỉ thông tin nhỏ. `404` không phân biệt "không tồn tại" với "không phải của bạn", và đó đúng là điều client cần biết.
 
-### Khi thêm auth thì sửa ở đâu
+### Auth đã thêm — thay đổi so với trước
 
-Đúng một chỗ: `currentUserId()` tại `services/meals.service.ts:12` — thay `LOCAL_USER_ID` bằng user lấy từ session, controller truyền xuống. **Repository không phải sửa một dòng nào**, vì mọi hàm của nó đã nhận `userId` làm tham số đầu tiên. Grep `LOCAL_USER_ID` ra đúng danh sách chỗ cần đổi trong toàn dự án — đó là lý do nó là một hằng có tên chứ không phải chuỗi `'local'` rải khắp nơi.
+**Đã làm (giai đoạn A).** Hàm `currentUserId()` bị xóa; bốn hàm service nhận `userId` làm tham
+số đầu tiên. **Repository không phải sửa một dòng nào** — mọi hàm của nó đã nhận `userId` từ
+đầu. Đó chính là khoản lãi của việc thêm cột `userId` ngay từ ngày đầu.
 
 **Quy tắc bất di bất dịch cho feature này:** không bao giờ thêm một truy vấn `prisma.meal.*` nào mà `where` thiếu `userId`, và không bao giờ chuyển `updateMany`/`deleteMany` ở đây về `update`/`delete` "cho gọn".

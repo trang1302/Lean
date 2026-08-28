@@ -189,8 +189,8 @@ và vẫn nhận `404` nếu `id` đó thuộc người khác.
 Cơ chế cách ly hàng đã được cài đặt và có test, mô tả đầy đủ ở
 [`../meals/SPEC.md`](../meals/SPEC.md) §6. Tóm tắt phần bắt buộc phải nhớ:
 
-- Mọi bảng có cột `userId` từ đầu, dù chưa có auth
-  ([`../../overview/02-data-model.md`](../../overview/02-data-model.md) §4).
+- Mọi bảng có cột `userId` từ đầu — quyết định đưa ra trước khi có auth, vẫn giữ nguyên sau khi
+  auth xong ([`../../overview/02-data-model.md`](../../overview/02-data-model.md) §4).
 - Hai hàm ghi của `meals` dùng **`updateMany`/`deleteMany` với `where: { id, userId }`** cho
   một thao tác trên đúng một bản ghi — **không** phải `findFirst` rồi `update`. Lý do:
   `update({ where: { id } })` là một câu lệnh ghi **không mang điều kiện sở hữu**; ai
@@ -233,7 +233,7 @@ Ba trong bốn thứ đó nằm ngoài phạm vi RBAC. Đó chính là lý do n�
 
 | Tình huống | Mã | Ai quyết định |
 |---|---|---|
-| Chưa đăng nhập | `401 UNAUTHORIZED` | middleware auth ([`../auth/SPEC.md`](../auth/SPEC.md)) |
+| Không có phiên | `401 UNAUTHORIZED` | middleware auth ([`../auth/SPEC.md`](../auth/SPEC.md)) |
 | Đã đăng nhập, vai trò không có quyền cho endpoint này | `403 FORBIDDEN` | `permissionGuard` (§6) |
 | Có quyền, nhưng hàng đó thuộc người khác | `404 NOT_FOUND` | repository, qua `where: { id, userId }` |
 | Có quyền, hàng của mình nhưng chưa tồn tại | `404 NOT_FOUND` | repository |
@@ -335,7 +335,7 @@ chạy đều theo nó. Thêm một dạng thứ hai chỉ cho RBAC là buộc m
 // 403 — đã đăng nhập, vai trò không có quyền
 { "error": { "code": "FORBIDDEN", "message": "Vai trò hiện tại không có quyền log:manage" } }
 
-// 401 — chưa đăng nhập (do feature auth trả, ghi ở đây để đối chiếu)
+// 401 — không có phiên (do feature auth trả, ghi ở đây để đối chiếu)
 { "error": { "code": "UNAUTHORIZED", "message": "Cần đăng nhập" } }
 ```
 
@@ -586,10 +586,10 @@ Seed **chỉ đụng ba bảng RBAC**, không tạo user, không gán vai trò c
 
 ### Gán vai trò cho user hiện có
 
-Hiện DB chỉ có dữ liệu của một người dùng cục bộ, `LOCAL_USER_ID = 'local'`
-(`server/src/shared/constants.ts:9`). Sau khi feature `auth` tạo bảng `User`, phải có đúng
-một hàng `User` mang `id = 'local'` — nếu không, toàn bộ `BodyLog`/`Meal`/`Goal`/`Reminder`
-hiện có sẽ mồ côi.
+Trước khi có auth, DB chỉ có dữ liệu của một người dùng cục bộ, `id = 'local'` (hằng đặt tên
+cho giá trị này từng nằm ở `server/src/shared/constants.ts`, đã xóa cùng file khi auth xong).
+Feature `auth` đã tạo bảng `User`; backfill phải đảm bảo có đúng một hàng `User` mang
+`id = 'local'` — nếu không, toàn bộ `BodyLog`/`Meal`/`Goal`/`Reminder` từ trước sẽ mồ côi.
 
 Backfill (đã hiện thực ở `prisma/seed/rbac.seed.ts`): **tài khoản CŨ NHẤT nhận
 `SYSTEM_ADMIN`**, các tài khoản còn lại nhận `USER`. Vì tài khoản đầu là chủ máy, và vì phải
@@ -653,7 +653,7 @@ UI tạo vai trò là một UI để vô tình tạo ra một vai trò có `rbac
 | `permissionRegistry` — hàm thuần | Từng dòng §7 khớp đúng luật mong đợi; `/users/:id/role` khớp **dòng 14** chứ không phải 16; path lạ trả "từ chối"; `/api/health` và `/api/auth/login` trả "mở" |
 | Bất biến registry ↔ DB | Mọi mã quyền dùng trong `PERMISSION_RULES` đều có trong seed; `ADMIN` có đủ 10 mã → không endpoint nào `403` với `ADMIN` |
 | `permissionCache` | Miss → đọc DB một lần, hit thứ hai không đọc lại; `evictUser` xóa đúng một user; `evictRole` xóa **mọi** user mang vai trò đó; TTL hết hạn thì đọc lại |
-| `permissionGuard` — integration (supertest) | `USER` gọi `GET /api/roles` → `403` đúng hình dạng `{ error: { code: 'FORBIDDEN' } }`; `ADMIN` → `200`; chưa đăng nhập → `401` (không phải `403`); route mở không cần đăng nhập |
+| `permissionGuard` — integration (supertest) | `USER` gọi `GET /api/roles` → `403` đúng hình dạng `{ error: { code: 'FORBIDDEN' } }`; `ADMIN` → `200`; không có phiên → `401` (không phải `403`); route mở không cần đăng nhập |
 | **RBAC ≠ ownership** | `ADMIN` gọi `PATCH /api/meals/:id` với `id` của user khác → **`404`**, và bản ghi **không bị đụng**. Đây là test quan trọng nhất của cả feature |
 | Đổi quyền hiệu lực ngay | Hạ user khỏi `ADMIN` → request kế tiếp `403`, không chờ TTL |
 | Bất biến §10 | Hạ `ADMIN` cuối cùng → `400`; tự hạ mình → `400`; gỡ `rbac:manage` khỏi `ADMIN` → `400` |

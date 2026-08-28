@@ -34,7 +34,7 @@ Router cắm tại prefix `/api/goal` (`server/src/app.ts:23`), path bên trong 
 Bốn lớp, ranh giới giữ nghiêm:
 
 - `controllers/goal.controller.ts` — HTTP, parse Zod, không biết Prisma
-- `services/goal.service.ts` — gắn `LOCAL_USER_ID`, map sang response DTO
+- `services/goal.service.ts` — nhận `userId` làm tham số đầu tiên, map sang response DTO
 - `repositories/goal.repository.ts` — **chỗ duy nhất** của feature import `prisma`
   (`server/src/features/goal/repositories/goal.repository.ts:1,5-6`)
 - `dtos/` — schema request + hàm map response

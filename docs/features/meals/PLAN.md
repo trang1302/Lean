@@ -40,7 +40,6 @@ Nền dùng chung (đã có sẵn, feature này chỉ tiêu thụ):
 
 - `server/src/shared/validation/commonSchemas.ts` — `dateString`, `pastOrTodayDateString`, `slotSchema`, `mealNameSchema`, `caloriesSchema`
 - `server/src/shared/errors/AppError.ts`, `errorHandler.ts` — `AppError.notFound` → `404`; `ZodError` → `400` kèm `fields`
-- `server/src/shared/constants.ts` — `LOCAL_USER_ID`
 - `server/src/lib/time.ts` — `todayIso()` theo `Asia/Ho_Chi_Minh`
 - `server/prisma/schema.prisma:37-49` — model `Meal`, index `@@index([userId, date])` phục vụ `findMealsByDate`
 

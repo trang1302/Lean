@@ -48,7 +48,7 @@ những chỗ ghi rõ là chưa có test ở §4 dưới đây.
 
 | File | Dòng | Vai trò |
 |---|---|---|
-| `server/src/features/bodyLogs/repositories/bodyLogs.repository.ts` | 53 | Lớp **duy nhất** import `prisma`. `whereKey()` gói `userId_date`. `findByDate`, `findInRange` (inclusive, `orderBy date asc`), `upsertByDate`, `deleteByDate` (dùng `deleteMany`, trả `boolean`). Mọi truy vấn mang `LOCAL_USER_ID`. |
+| `server/src/features/bodyLogs/repositories/bodyLogs.repository.ts` | 53 | Lớp **duy nhất** import `prisma`. `whereKey()` gói `userId_date`. `findByDate`, `findInRange` (inclusive, `orderBy date asc`), `upsertByDate`, `deleteByDate` (dùng `deleteMany`, trả `boolean`). Mọi truy vấn mang `userId` — tham số đầu tiên. |
 
 ### Test
 
@@ -59,7 +59,7 @@ những chỗ ghi rõ là chưa có test ở §4 dưới đây.
 ### File dùng chung feature này dựa vào (KHÔNG do feature tạo)
 
 `server/src/shared/validation/commonSchemas.ts` · `server/src/shared/errors/AppError.ts` ·
-`server/src/shared/errors/errorHandler.ts` · `server/src/shared/constants.ts` ·
+`server/src/shared/errors/errorHandler.ts` · `server/src/shared/rbac/permissionRegistry.ts` ·
 `server/src/lib/time.ts` · `server/src/lib/db.ts` · `server/prisma/schema.prisma` (model
 `BodyLog`) · `server/src/app.ts` (mount router).
 

@@ -206,7 +206,7 @@ Vì sao luật cứng đến vậy — bốn thứ **không thể** đúng nếu
 3. **CSRF token** (§4.2) phải gắn vào **mọi** request ghi. Bỏ sót một chỗ là một nút bấm trả
    `403` mà không ai hiểu vì sao.
 4. **`credentials: 'include'`** (§4.2). Thiếu nó thì trình duyệt không gửi cookie phiên và
-   **mọi** request trả `401` — một lỗi mà triệu chứng ("app không đăng nhập được") cách xa
+   **mọi** request trả `401` — một lỗi mà triệu chứng ("app không vào được") cách xa
    nguyên nhân (một dòng thiếu trong option của `fetch`).
 
 Hệ quả về file: `features/<tên>/api/<tên>.api.ts` là **chỗ duy nhất của mỗi trang biết đường
@@ -321,7 +321,7 @@ Hai mã, hai nguyên nhân, hai cách xử lý. Nguồn:
 | Mã | `code` | Nghĩa | Xử ở đâu | Làm gì |
 |---|---|---|---|---|
 | `401` | `UNAUTHORIZED` | **Chưa/hết phiên** | **Một chỗ duy nhất: `apiClient`** | Xóa state phiên trong bộ nhớ, điều hướng `/login?next=<đường dẫn hiện tại>`. **Không** hiện màn hình lỗi đỏ — phiên hết hạn là chuyện bình thường |
-| `401` | `INVALID_CREDENTIALS` | Sai email hoặc mật khẩu | **Trang đăng nhập** | Hiện lỗi trên form. **Không** đá đi đâu — đang ở `/login` rồi. `apiClient` phải loại trừ ca này khỏi luật đá-về-login, nếu không đăng nhập sai một lần sẽ tự nạp lại trang |
+| `401` | `INVALID_CREDENTIALS` | Sai email hoặc mật khẩu | **Trang đăng nhập** | Hiện lỗi trên form. **Không** đá đi đâu — đang ở `/login` rồi. `apiClient` phải loại trừ ca này khỏi luật đá-về-login, nếu không, đăng nhập sai một lần sẽ tự nạp lại trang |
 | `403` | `FORBIDDEN` | Đã đăng nhập, **thiếu quyền** | Caller | Ném lên. Shell hiện thông báo tại chỗ + nạp lại "tôi là ai" (§6) |
 | `403` | `ACCOUNT_DISABLED` | Mật khẩu đúng, tài khoản bị khóa | Trang đăng nhập | Hiện lỗi trên form |
 | `403` | `CSRF_ERROR` | Token thiếu/sai | `apiClient` | Lấy token mới, thử lại **một** lần (§4.2 dòng 5) |
@@ -389,11 +389,11 @@ dấu, và một chỗ cho danh tính người dùng + **nút đăng xuất**.
 > **không phải sửa `web-settings/SPEC.md`**, và đăng xuất vốn là thao tác cấp ứng dụng chứ
 > không phải một mục cài đặt. Ghi lại ở §10 câu 3 để chủ dự án có thể đảo.
 
-`/login` **không** dùng `AppLayout` — không có tab để bấm khi chưa đăng nhập.
+`/login` **không** dùng `AppLayout` — không có tab để bấm khi không có phiên.
 
 ### 5.3 Route guard
 
-Ba route đầu yêu cầu phiên. Chưa đăng nhập → chuyển hướng `/login`, kèm đường dẫn đang muốn
+Ba route đầu yêu cầu phiên. Không có phiên → chuyển hướng `/login`, kèm đường dẫn đang muốn
 vào để đăng nhập xong quay lại đúng chỗ.
 
 Luồng khởi động, đúng thứ tự:
@@ -409,7 +409,7 @@ Luồng khởi động, đúng thứ tự:
 > ### Guard ở client CHỈ là trải nghiệm. Server vẫn phải chặn.
 >
 > Người dùng sửa JS trong DevTools, gọi thẳng API bằng `curl`, hoặc chỉ cần tắt JavaScript.
-> **Guard của `web-shell` không bảo vệ gì cả** — nó chỉ để người chưa đăng nhập không nhìn
+> **Guard của `web-shell` không bảo vệ gì cả** — nó chỉ để người không có phiên không nhìn
 > thấy một trang trống rồi ba thông báo lỗi `401`.
 >
 > Chốt chặn thật là `requireAuth` mắc **một lần** trước năm router dữ liệu trong
