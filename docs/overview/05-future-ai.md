@@ -92,7 +92,7 @@ Ba thứ dưới đây bản hiện tại **chưa chừa chỗ**, phải thiết
 | Vấn đề | Vì sao chưa có sẵn |
 |---|---|
 | Ảnh lưu ở đâu | App hiện không lưu file gì ngoài `data.db`. Thêm ảnh là thêm một thư mục có vòng đời riêng: xóa `Meal` thì ảnh mồ côi, backup không còn là "copy một file" nữa (xem `README.md` mục Sao lưu). |
-| API key của nhà cung cấp AI | `server/src/config/env.ts` hiện chỉ có `DATABASE_URL`, `PORT`, `NTFY_BASE_URL`. Rủi ro **đổi bản chất tùy lúc làm**: khi chưa có auth, bất kỳ ai chạm được cổng 3000 sẽ tiêu tiền của bạn qua `POST /meals/estimate`. Khi đã có auth (spec ở `../features/auth/`), rủi ro chuyển thành *người dùng đã đăng nhập tiêu tiền của bạn* — cần hạn mức theo người dùng chứ không phải chỉ khóa cổng. Đây là hai bài toán khác nhau, đừng giải bài cũ rồi tưởng xong. |
+| API key của nhà cung cấp AI | `server/src/config/env.ts` hiện chỉ có `DATABASE_URL`, `PORT`, `NTFY_BASE_URL`. Auth đã có (`../features/auth/`), nhưng đăng nhập chỉ xác định **ai** gọi, không tự giới hạn **gọi bao nhiêu** — một người dùng đã đăng nhập gọi dồn dập `POST /meals/estimate` vẫn tiêu tiền của bạn qua API AI. Cần hạn mức theo `userId` (rate limit / quota), không phải chỉ dựa vào việc đã xác thực. |
 | Hiển thị nguồn số liệu | `caloriesSource` chỉ có ý nghĩa nếu giao diện cho thấy được món nào do AI đoán. Nếu không hiện thì cột này chỉ là dữ liệu chết. |
 
 ## 5. Điều KHÔNG được làm nhân dịp này

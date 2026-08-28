@@ -15,11 +15,12 @@ Liên quan: [`01-architecture.md`](01-architecture.md) (cây thư mục và lý 
   - **Express 5** bắt lỗi async sẵn trong core — **không** cài `express-async-errors`, không tự bọc try/catch để nuốt lỗi.
   - **Zod 4**: format validator lên top-level — `z.url()`, `z.email()`, thay cho `z.string().url()`, `z.string().email()`.
 - **Cấu trúc feature-first 4 lớp** (bám quán lệ `upip`): `controller → service → repository → Prisma`, **không ngoại lệ** kể cả CRUD tầm thường. `repositories/` là chỗ duy nhất được import `prisma`.
-- **Mọi bảng và mọi truy vấn mang `userId`**, lấy từ hằng `LOCAL_USER_ID` trong `server/src/shared/constants.ts`. Chưa có đăng nhập — nhưng khóa đã là `(userId, date)` để sau này thêm auth không phải migrate lại schema.
+- **Mọi bảng và mọi truy vấn mang `userId`**, lấy từ phiên đăng nhập (`req.user.id`, do `requireAuth` gắn). Khóa là `(userId, date)` từ đầu — nhờ vậy việc thêm auth không phải migrate lại schema, và khoản đầu tư đó đã được thu hồi ở giai đoạn A.
 - **`date` luôn là chuỗi `"YYYY-MM-DD"`.** Không bao giờ dùng `DateTime`/`Date` cho ngày lịch trong DB hoặc trong API payload. Mọi thao tác ngày đi qua `server/src/lib/time.ts`.
 - **Timezone: `Asia/Ho_Chi_Minh`.** Chỉ dùng cho việc xác định "hôm nay"; số học ngày thực hiện trên UTC nên không lệch.
 - **`shared/stats/` là hàm thuần** — không import `lib/db.ts`, không import express, không đọc `Date.now()` trực tiếp (nhận `todayIso` làm tham số). Để ngoài `features/` vì MA7 dùng chung bởi `summary` và `goal`.
-- **Bản đang chạy chưa có auth, chưa có middleware xác thực** → chỉ được chạy localhost. Đây là **trạng thái hiện tại**, không còn là quy ước vĩnh viễn: quyết định đã đảo ngày 2026-08-07, spec + plan ở `../features/{auth,rbac}/`. Khi làm xong, quy ước sẽ là *enforcement 100% ở tầng middleware, không check quyền rải rác trong controller hay service*.
+- **Enforcement 100% ở tầng middleware.** `requireAuth` (ai) rồi `permissionGuard` (được làm gì), cắm mỗi thứ đúng một lần ở `app.ts`. **Không** có `if (user.role === ...)` trong controller hay service. Bất biến trên HÀNG DỮ LIỆU (ownership, và "ADMIN không đụng tài khoản SYSTEM_ADMIN") thì ở service — đó là chuyện khác, xem `../features/rbac/SPEC.md` §5.
+- **Vẫn chỉ chạy localhost**, nhưng vì lý do khác trước: đã có xác thực, còn thiếu audit log RBAC và cache quyền chưa dùng chung được giữa nhiều tiến trình.
 - **Zod validate mọi input** (body + query + params) tại tầng controller, schema đặt trong `features/<f>/dtos/<f>.request.ts`.
 - **MA7 trả `null` khi cửa sổ có dưới 2 giá trị.** Cửa sổ là 7 ngày **lịch** `[d-6, d]`, không phải 7 điểm dữ liệu gần nhất.
 - **Tuần bắt đầu thứ Hai.**

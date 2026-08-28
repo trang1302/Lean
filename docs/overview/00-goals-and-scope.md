@@ -43,17 +43,17 @@ Và cho biết: xu hướng cân nặng/vòng bụng theo thời gian, lượng 
 Hai quyết định nền tảng đi kèm phạm vi này, lý do đầy đủ ở [`01-architecture.md`](01-architecture.md):
 
 - **SQLite thay vì Postgres** — một file `data.db`, không cần cài dịch vụ, backup = copy file. Đánh đổi: không chạy được nhiều tiến trình ghi đồng thời — không thành vấn đề với 1 người dùng.
-- **Không có đăng nhập** — localhost, một người. Auth chỉ thêm một màn hình phải bấm qua mỗi ngày mà không bảo vệ thêm điều gì. Đánh đổi: nếu sau này mở ra mạng LAN hoặc cloud thì **bắt buộc** phải thêm auth trước. *Điều kiện "sau này" đó đã xảy ra — xem mục kế tiếp. Lý do gốc giữ nguyên ở đây vì nó vẫn đúng với bối cảnh cũ và giải thích vì sao bản đang chạy trông như hiện tại.*
+- ~~**Không đăng nhập**~~ **← đã đảo 2026-08-07, đã làm xong** — xem mục kế tiếp. Lý do gốc (localhost, một người, auth chỉ thêm một bước bấm qua mỗi ngày) giữ nguyên ở đây vì nó giải thích vì sao dự án từng chọn vậy, không còn mô tả bản đang chạy.
 
-Dù bản đang chạy chưa có đăng nhập, **mọi bảng vẫn mang cột `userId` ngay từ đầu** — xem [`02-data-model.md`](02-data-model.md) để biết vì sao. Đó là bước chuẩn bị, và giờ nó đang được dùng tới.
+**Mọi bảng mang cột `userId` ngay từ đầu** — xem [`02-data-model.md`](02-data-model.md) để biết vì sao. Đó là bước chuẩn bị, và giờ nó đang được dùng tới.
 
 ### Đăng nhập và phân quyền — quyết định đã đổi (2026-08-07)
 
 **Đã đổi.** Chủ dự án nêu hướng phát triển vượt xa bối cảnh một máy — quy mô có thể lên tới hàng chục triệu người dùng — và yêu cầu bổ sung phân quyền. Với nhiều người dùng thật, hai lập luận nền của quyết định cũ ("chỉ có một người", "auth không bảo vệ thêm điều gì") không còn đúng: dữ liệu sức khỏe của người này phải không nhìn thấy được bởi người kia. Vì vậy **đăng nhập và phân quyền nay nằm TRONG phạm vi dự án**.
 
-**Trạng thái: đã có spec + plan, CHƯA implement.** Chưa có dòng code auth nào. Bản đang chạy vẫn là bản không xác thực, mọi bản ghi vẫn mang `userId = 'local'`.
+**Trạng thái: XONG (2026-08-28).** Đăng ký, đăng nhập, phiên server-side, CSRF, chống brute-force, cách ly dữ liệu theo người dùng, ba vai trò và mười quyền, API quản trị, và hai khối quản trị trên web.
 
-> **Cảnh báo vẫn còn nguyên giá trị:** vì bản hiện tại không có auth, nó **chỉ được chạy trên localhost**. Mở ra mạng LAN hoặc cloud **trước khi** làm xong `auth` và `rbac` là phơi toàn bộ dữ liệu sức khỏe cho bất kỳ ai chạm được tới cổng đó — không cần mật khẩu, không cần thủ thuật gì.
+> **Vẫn chỉ chạy localhost — nhưng vì lý do khác trước.** Không còn là "ai chạm được cổng cũng đọc được tất cả"; giờ là hai khoản nợ hẹp hơn: **chưa có audit log** cho thao tác phân quyền, và **cache quyền nằm trong bộ nhớ tiến trình** nên chạy nhiều instance sẽ sai im lặng. Xử lý hai khoản đó trước khi mở ra LAN hoặc cloud.
 
 Chi tiết không nằm ở file này. Xem:
 

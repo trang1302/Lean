@@ -13,11 +13,11 @@ Liên quan: [`00-goals-and-scope.md`](00-goals-and-scope.md) ·
 [`04-conventions.md`](04-conventions.md) · `../features/<tên>/PLAN.md` (nguồn của phần lớn mục
 dưới đây, có dẫn `đường-dẫn:dòng`).
 
-> **Cập nhật 2026-08-07.** Dự án chốt là **sẽ có đăng nhập và phân quyền** (spec + plan đã có,
-> **chưa implement**). Quyết định đó sinh ra Q12–Q15, sửa trạng thái của Q11, và chạm vào vài mục
-> cũ — những mục bị chạm đều có dòng *"Ảnh hưởng của quyết định auth/rbac"* ngay trong mục. Các
-> câu hỏi thuộc riêng hai feature đó **không** gom về đây; chúng nằm ở
-> `../features/auth/PLAN.md` và `../features/rbac/PLAN.md`.
+> **Cập nhật 2026-08-07 → 2026-08-28.** Dự án chốt là **sẽ có đăng nhập và phân quyền**, và giai
+> đoạn A–D nay **đã xong**. Quyết định đó sinh ra Q12–Q15 (đã trả lời — xem cập nhật trong từng
+> mục), sửa trạng thái của Q11, và chạm vào vài mục cũ — những mục bị chạm đều có dòng
+> *"Ảnh hưởng của quyết định auth/rbac"* ngay trong mục. Các câu hỏi thuộc riêng hai feature đó
+> **không** gom về đây; chúng nằm ở `../features/auth/PLAN.md` và `../features/rbac/PLAN.md`.
 
 ---
 
@@ -262,37 +262,44 @@ Ghi lại ở đây để không ai mở lại vô cớ. Lý do đầy đủ ở
 cloud — và khi đó auth là **bắt buộc**, không phải tùy chọn. Đổi lúc này sẽ đụng
 `schema.prisma`, `app.ts` và toàn bộ tầng test.
 
-**Cập nhật 2026-08-07 — bối cảnh đã đổi thật.** Chủ dự án nêu hướng nhiều người dùng và yêu cầu
-phân quyền, nên **nửa "không đăng nhập" của mục này không còn là quyết định đóng**: đăng nhập và
-phân quyền nay nằm trong phạm vi ([`00-goals-and-scope.md`](00-goals-and-scope.md) §2,
+**Cập nhật 2026-08-07 → 2026-08-28 — bối cảnh đã đổi, và đã làm xong.** Chủ dự án nêu hướng
+nhiều người dùng và yêu cầu phân quyền; đăng nhập và phân quyền nay nằm trong phạm vi
+([`00-goals-and-scope.md`](00-goals-and-scope.md) §2,
 [`../features/auth/SPEC.md`](../features/auth/SPEC.md),
-[`../features/rbac/SPEC.md`](../features/rbac/SPEC.md)). Mới có spec + plan, **chưa implement**;
-bản đang chạy vẫn không auth và vì thế vẫn **chỉ được chạy localhost**.
+[`../features/rbac/SPEC.md`](../features/rbac/SPEC.md)) và **đã triển khai xong** (giai đoạn
+A–D). Bản đang chạy có phiên đăng nhập, CSRF, chống brute-force và phân quyền —
+**vẫn chỉ giới hạn ở localhost**, nhưng vì lý do khác: chưa có audit log cho thao tác RBAC, và
+cache quyền nằm trong bộ nhớ tiến trình nên chạy nhiều instance sẽ sai im lặng.
 
 Nửa "SQLite" **vẫn đang chốt** cho tới khi có ai quyết ngược lại — nhưng lập luận đỡ nó ("một
-người dùng, một tiến trình ghi") là thứ sẽ mất hiệu lực cùng lúc với auth, nên đây là mục sẽ
-phải xem lại sớm, không phải mục yên ổn nữa. Q12–Q15 dưới đây là các câu hỏi mới sinh ra từ
-quyết định này.
+người dùng, một tiến trình ghi") đã yếu đi từ khi có đăng nhập thật, nên đây là mục sẽ phải xem
+lại sớm, không phải mục yên ổn nữa. Q12–Q15 dưới đây là các câu hỏi sinh ra từ quyết định thêm
+auth/rbac — cả bốn nay đã có câu trả lời.
 
 Nguồn: `2026-08-06-original-design.md` §12 mục 1; cập nhật 2026-08-07 theo yêu cầu của chủ dự án.
 
-### Q12. Bao giờ bật auth, và bật theo trình tự nào
+### Q12. Bao giờ bật auth, và bật theo trình tự nào — **đã trả lời**
 
-**Bối cảnh.** Có spec cho `auth` và `rbac`, chưa có code. Năm feature backend đang chạy đều giả
-định `LOCAL_USER_ID` và **không có** middleware xác thực nào trước chúng.
+> **Cập nhật 2026-08-28.** Bật một lần cho toàn bộ API, không bật dần từng feature:
+> `requireAuth` mắc đúng một lần ở `app.ts`, `permissionGuard` mắc đúng một lần ở `/api`, mặc
+> định TỪ CHỐI — route không khai trong `permissionRegistry.ts` trả `403`. Không có đường thoát
+> tạm thời nào được giữ lại.
+
+**Bối cảnh (lúc còn mở).** Có spec cho `auth` và `rbac`, chưa có code. Năm feature backend đang
+chạy đều giả định một hằng người dùng cố định và không middleware nào đứng trước chúng để xác
+thực request.
 
 **Vì sao cần quyết.** Ngày bật auth là ngày mọi route hiện có đổi hành vi cùng lúc. Trước đó,
 mỗi ngày app còn chạy ngoài localhost là một ngày dữ liệu sức khỏe phơi ra; sau đó, mọi test
 đang pass đều phải mang phiên đăng nhập.
 
-**Cần trả lời.** Bật một lần cho toàn bộ API hay bật dần từng feature? Trong lúc chuyển tiếp có
-giữ đường thoát "chạy không auth trên localhost" không — và nếu có thì bằng cơ chế gì để nó
-không vô tình bật trên cloud? `web/` chưa tồn tại: có chờ dựng xong màn hình đăng nhập rồi mới
-bật ở backend, hay ngược lại?
+Nguồn: quyết định 2026-08-07, trả lời 2026-08-28. Chi tiết trình tự thuộc `../features/auth/PLAN.md`.
 
-Nguồn: quyết định 2026-08-07. Chi tiết trình tự thuộc `../features/auth/PLAN.md`.
+### Q13. Dữ liệu người dùng cũ migrate thế nào — **đã trả lời**
 
-### Q13. Dữ liệu `userId = 'local'` migrate thế nào
+> **Cập nhật 2026-08-28 — đã xong.** Tài khoản `trang1302@uitgis.vn` là chủ dữ liệu. Bốn bảng
+> dữ liệu nay có khóa ngoại `NOT NULL` tới `User`; hằng số cũ dùng để đánh dấu bản ghi trước khi
+> có tài khoản thật đã bị xóa khỏi code.
 
 > **Cập nhật 2026-08-07 — email đã có, phần còn lại vẫn mở.**
 >
@@ -308,9 +315,8 @@ Nguồn: quyết định 2026-08-07. Chi tiết trình tự thuộc `../features
 >
 > Trong DB luôn là băm Argon2id, không bao giờ là chuỗi đọc được.
 
-**Bối cảnh.** Mọi bản ghi hiện có mang `userId = 'local'` (hằng `LOCAL_USER_ID`), một chuỗi tự do
-không trỏ tới hàng nào. Bảng `User` chưa tồn tại
-([`02-data-model.md`](02-data-model.md)).
+**Bối cảnh (lúc còn mở).** Mọi bản ghi khi đó mang một giá trị cố định, một chuỗi tự do không
+trỏ tới hàng nào. Bảng `User` chưa tồn tại ([`02-data-model.md`](02-data-model.md)).
 
 **Vì sao cần quyết.** Đây là dữ liệu sức khỏe thật đã ghi tay hàng ngày — mất là mất hẳn, không
 tái tạo được. Ràng buộc khóa ngoại bật trước khi migrate sẽ làm hỏng hoặc chặn toàn bộ.
@@ -321,9 +327,12 @@ người ta không muốn nhận thì xóa hay giữ mồ côi?
 
 Nguồn: quyết định 2026-08-07.
 
-### Q14. Đăng ký tự do hay chỉ admin tạo tài khoản
+### Q14. Đăng ký tự do hay chỉ admin tạo tài khoản — **đã trả lời**
 
-**Bối cảnh.** Chưa chốt cách một người có tài khoản.
+> **Cập nhật 2026-08-28.** Đăng ký mở công khai (`POST /api/auth/register`, không cần đăng
+> nhập trước). Vai trò gán cứng phía server (mặc định `USER`) — **không** đọc từ body request.
+
+**Bối cảnh (lúc còn mở).** Chưa chốt cách một người có tài khoản.
 
 **Vì sao cần quyết.** Hai hướng kéo theo hai bộ tính năng khác hẳn nhau: đăng ký mở cần xác minh
 email, chống bot, luồng quên mật khẩu; admin cấp tài khoản thì cần màn hình quản trị và luồng
@@ -334,12 +343,17 @@ mời. Chọn sai hướng rồi đổi là làm lại phần lớn `auth`.
 
 Nguồn: quyết định 2026-08-07. Hình dạng cụ thể thuộc `../features/auth/SPEC.md`.
 
-### Q15. Admin có được xem dữ liệu sức khỏe của người khác không
+### Q15. Admin có được xem dữ liệu sức khỏe của người khác không — **đã trả lời**
+
+> **Cập nhật 2026-08-28.** Không. RBAC gác chức năng (403), ownership gác hàng dữ liệu (404) —
+> hai lớp tách rời. `SYSTEM_ADMIN` có quyền `log:view` vẫn **không** đọc được nhật ký của người
+> khác; quyền đó chỉ mở chức năng, không mở hàng dữ liệu của người khác. Admin quản lý tài
+> khoản và vai trò, không quản lý số đo cơ thể.
 
 **Đây là câu hỏi quyền riêng tư, không phải câu hỏi kỹ thuật.** Kỹ thuật thì làm kiểu gì cũng
 được; cái phải quyết là **có nên**.
 
-**Bối cảnh.** Cân nặng, vòng bụng và nhật ký ăn uống là dữ liệu sức khỏe cá nhân. Một vai trò
+**Bối cảnh (lúc còn mở).** Cân nặng, vòng bụng và nhật ký ăn uống là dữ liệu sức khỏe cá nhân. Một vai trò
 "admin" mặc định-thấy-tất-cả là chuyện thường thấy trong phần mềm quản trị, và ở đây nó có nghĩa
 là một người xem được toàn bộ lịch sử cơ thể của người khác.
 

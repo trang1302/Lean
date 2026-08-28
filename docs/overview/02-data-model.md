@@ -2,17 +2,17 @@
 
 File này trả lời: **có những bảng nào, khóa là gì, và vì sao `date` là chuỗi chứ không phải `DateTime`.** Đọc trước khi đổi `server/prisma/schema.prisma`.
 
-Liên quan: [`00-goals-and-scope.md`](00-goals-and-scope.md) (vì sao bản đang chạy chưa có auth, và vì sao quyết định đó đã đổi) · [`01-architecture.md`](01-architecture.md) (Prisma 7 và vị trí connection string) · [`03-stats.md`](03-stats.md) (dữ liệu này được tính thành gì) · [`04-conventions.md`](04-conventions.md) (ràng buộc validate cho từng trường).
+Liên quan: [`00-goals-and-scope.md`](00-goals-and-scope.md) (vì sao mọi bảng mang cột `userId`, và trạng thái auth hiện tại) · [`01-architecture.md`](01-architecture.md) (Prisma 7 và vị trí connection string) · [`03-stats.md`](03-stats.md) (dữ liệu này được tính thành gì) · [`04-conventions.md`](04-conventions.md) (ràng buộc validate cho từng trường).
 
 ---
 
 ## 4. Mô hình dữ liệu
 
-**Mọi bảng mang cột `userId` ngay từ đầu, dù bản đang chạy chưa có đăng nhập.** Hiện tại mọi bản ghi dùng hằng `LOCAL_USER_ID` trong `src/shared/constants.ts`. Khóa vì thế là **kép**: `BodyLog` dùng `@@id([userId, date])`, `Goal` dùng `userId` làm khóa chính, `Reminder` dùng `@@unique([userId, kind])`.
+**Mọi bảng mang cột `userId` ngay từ đầu**, từ trước khi có đăng nhập. Giá trị của cột đó nay đến từ phiên (`req.user.id`). Khóa vì thế là **kép**: `BodyLog` dùng `@@id([userId, date])`, `Goal` dùng `userId` làm khóa chính, `Reminder` dùng `@@unique([userId, kind])`.
 
-Lý do làm ngay thay vì để sau: thêm khóa người dùng vào một schema đã có dữ liệu nghĩa là sửa mọi bảng, mọi ràng buộc unique, mọi truy vấn, mọi route, cộng một lần migrate. Làm bây giờ tốn một cột và một hằng. Khi thêm auth, grep `LOCAL_USER_ID` ra đúng danh sách chỗ cần thay bằng user lấy từ session.
+Lý do làm ngay thay vì để sau: thêm khóa người dùng vào một schema đã có dữ liệu nghĩa là sửa mọi bảng, mọi ràng buộc unique, mọi truy vấn, mọi route, cộng một lần migrate. Khoản đầu tư đó đã được thu hồi: giai đoạn A thay nguồn của `userId` mà **không đổi một khóa nào** của bốn bảng dữ liệu.
 
-**Bước chuẩn bị đó nay đang được dùng tới.** Ngày 2026-08-07 dự án chốt là **sẽ có đăng nhập và phân quyền** ([`00-goals-and-scope.md`](00-goals-and-scope.md) §2). Hình dạng bảng ở trên **không đổi** — đúng như dự tính lúc thêm cột. Trạng thái: mới có spec + plan, **chưa có dòng code auth nào**.
+**Bước chuẩn bị đó nay đang được dùng tới.** Ngày 2026-08-07 dự án chốt là **sẽ có đăng nhập và phân quyền** ([`00-goals-and-scope.md`](00-goals-and-scope.md) §2). Hình dạng bảng ở trên **không đổi** — đúng như dự tính lúc thêm cột. Trạng thái: **đã xong** (2026-08-28). Bốn bảng dữ liệu thêm đúng một dòng quan hệ `user User @relation(..., onDelete: Cascade)`; `@@id([userId, date])`, `@@unique([userId, kind])` và `Goal.userId` làm khóa chính đều giữ nguyên.
 
 > **Đừng đọc câu "chỉ tốn một cột và một hằng" ở trên thành "thay hằng là xong".**
 > Cột thì đúng là không phải đổi. Nhưng grep thực tế cho thấy code chia làm hai nhóm:

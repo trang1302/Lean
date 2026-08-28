@@ -26,7 +26,8 @@ LEAN/
 │   │   │   ├── db.ts                # PrismaClient + driver adapter
 │   │   │   └── time.ts              # xử lý ngày theo timezone local
 │   │   ├── shared/
-│   │   │   ├── constants.ts         # LOCAL_USER_ID
+│   │   │   ├── rbac/                # permissionRegistry, guard, cache
+│   │   │   ├── security/            # password (Argon2id), csrf
 │   │   │   ├── stats/               # HÀM THUẦN — không DB, không HTTP
 │   │   │   │   ├── movingAverage.ts # MA7
 │   │   │   │   ├── rate.ts          # currentRate, requiredRate, onTrack, remainingKg
@@ -79,15 +80,15 @@ LEAN/
 
 | Quyết định | Lý do | Đánh đổi |
 |---|---|---|
-| **SQLite** thay vì Postgres | Một file `data.db`, không cần cài dịch vụ, backup = copy file | Không chạy được nhiều tiến trình ghi đồng thời — không thành vấn đề với 1 người dùng |
-| ~~**Không có đăng nhập**~~ **← đã đảo 2026-08-07** | Lý do gốc: localhost, một người; auth chỉ thêm một màn hình bấm qua mỗi ngày mà không bảo vệ thêm gì. Điều kiện "nếu mở ra LAN/cloud" nay đã xảy ra — xem [`00-goals-and-scope.md`](00-goals-and-scope.md) | Spec + plan ở `../features/{auth,rbac}/`, **chưa implement**. Bản đang chạy vẫn không có auth → chỉ localhost |
+| **SQLite** thay vì Postgres | Một file `data.db`, không cần cài dịch vụ, backup = copy file | Một writer tại một thời điểm. Mỗi lần đăng nhập ghi ít nhất hai hàng (`Session` + `LoginAttempt`), nên đây là thứ phải xem lại khi số người dùng thật tăng — xem [`06-open-questions.md`](06-open-questions.md) Q11 |
+| ~~**Không đăng nhập**~~ **← đã đảo 2026-08-07** | Lý do gốc: localhost, một người; auth chỉ thêm một màn hình bấm qua mỗi ngày mà không bảo vệ thêm gì. Điều kiện "nếu mở ra LAN/cloud" nay đã xảy ra — xem [`00-goals-and-scope.md`](00-goals-and-scope.md) | Đã làm xong giai đoạn A–D (2026-08-28): phiên server-side, CSRF, 3 vai trò, 10 quyền. Vẫn chỉ localhost vì còn thiếu audit log RBAC |
 | Express 5 + Prisma 7 + TypeScript 7 | Bản mới nhất tại thời điểm dựng dự án. Express 5 bắt lỗi async sẵn trong core nên **không cần** `express-async-errors` | Prisma 7 bỏ `url` khỏi `datasource` — connection string chuyển sang `prisma.config.ts`, client nối DB qua driver adapter `@prisma/adapter-better-sqlite3` |
 | Zod 4 | Mới nhất, và trùng bản upip đang dùng | Format validator lên top-level: `z.url()` thay cho `z.string().url()` |
 | React 19 + Vite 8 + Recharts 3 | Bản mới nhất | — |
 | Cấu trúc feature-first 4 lớp | Giống `upip` — đi qua lại giữa hai dự án không phải học lại cách sắp xếp | CRUD tầm thường vẫn tốn 5 file; đổi lấy tính nhất quán |
 | Logic thống kê tách vào `shared/stats/` | Hàm thuần, không đụng DB hay HTTP → test được độc lập. Để ngoài `features/` vì MA7 dùng chung bởi `summary` và `goal` | — |
-| Cột `userId` từ đầu, chưa có auth | Nhét khóa người dùng vào sau nghĩa là sửa mọi bảng, mọi unique constraint, mọi truy vấn và migrate dữ liệu. Làm ngay chỉ tốn một cột và một hằng | Mọi truy vấn phải mang `userId`, kể cả khi chỉ có một người dùng |
+| Cột `userId` từ đầu, từ trước khi có auth | Nhét khóa người dùng vào sau nghĩa là sửa mọi bảng, mọi unique constraint, mọi truy vấn và migrate dữ liệu. Làm ngay chỉ tốn một cột và một hằng — khoản đầu tư đó đã thu hồi ở giai đoạn A | Mọi truy vấn phải mang `userId`; nay giá trị đến từ phiên đăng nhập thay vì hằng số |
 
 Quyết định SQLite vẫn là thay đổi cục bộ nếu cần đảo: đổi `provider` trong `schema.prisma` để sang Postgres.
 
-Quyết định "không đăng nhập" **đã đảo**. Việc thêm auth hóa ra không chỉ là "thêm middleware vào `app.ts`" như câu này từng viết — nó kéo theo bảng `User`/`Role`/`Permission`, thay hằng `LOCAL_USER_ID` ở mọi repository, migrate dữ liệu `userId='local'`, và một trang đăng nhập ở web. Xem `../features/auth/PLAN.md`.
+Quyết định "không đăng nhập" **đã đảo và đã làm xong**. Nó hóa ra không chỉ là "thêm middleware vào `app.ts`": kéo theo bảng `User`/`Session`/`LoginAttempt`/`Role`/`Permission`/`RolePermission`, đổi chữ ký repository ở ba feature, viết lại scheduler nhắc nhở theo nhiều người dùng, và bốn màn hình web. Xem `../features/auth/PLAN.md` và `../features/rbac/PLAN.md`.
