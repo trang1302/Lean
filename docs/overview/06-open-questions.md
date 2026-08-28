@@ -35,11 +35,11 @@ dưới đây, có dẫn `đường-dẫn:dòng`).
 | Q8 | Lỗi `:date` che mất lỗi body khi `PUT /body-logs` | thiết kế | trang Hôm nay |
 | Q9 | Đơn vị đo kg/cm | thiết kế | toàn bộ UI |
 | Q10 | Bốn buổi ăn đã đủ chưa | thiết kế | `meals`, trang Hôm nay |
-| Q11 | SQLite + không đăng nhập | **đã chốt, nay mở lại một nửa** (2026-08-07) | mọi thứ dưới đây |
-| Q12 | Bao giờ bật auth, và bật theo trình tự nào | thiết kế | `auth`, `rbac`, mọi feature đang chạy |
-| Q13 | Dữ liệu `userId = 'local'` migrate thế nào | thiết kế | `auth`, dữ liệu hiện có |
-| Q14 | Đăng ký tự do hay chỉ admin tạo tài khoản | thiết kế | `auth` |
-| Q15 | Admin có được xem dữ liệu sức khỏe của người khác không | **quyền riêng tư**, không phải kỹ thuật | `rbac` |
+| Q11 | SQLite + đăng nhập | **đã chốt** — giữ SQLite, auth đã làm xong | — |
+| Q12 | Bao giờ bật auth, theo trình tự nào | **đã chốt** — giai đoạn A→D, xong 2026-08-28 | — |
+| Q13 | Dữ liệu người dùng cũ migrate thế nào | **đã chốt** — không migrate, backfill `roleId` | — |
+| Q14 | Đăng ký tự do hay chỉ admin tạo tài khoản | **đã chốt** — cả hai | — |
+| Q15 | Admin có được xem dữ liệu sức khỏe người khác không | **đã chốt** — KHÔNG | — |
 | D1 | Biên 730 ngày: `<` hay `<=`, và không có test biên | khiếm khuyết | không ai |
 | D2 | `note` trim nhưng thiếu `.min(1)` → `""` thay vì `null` | khiếm khuyết | trang Hôm nay |
 | D3 | `updatedAt` bị bump khi `PATCH /meals/:id` không đổi gì | khiếm khuyết | trang Hôm nay |
@@ -240,7 +240,11 @@ cũ sẽ không tự phân loại lại. Chốt sớm thì thống kê theo bu�
 
 Nguồn: `2026-08-06-original-design.md` §12 mục 3.
 
-### Q11. SQLite + không đăng nhập — **đã chốt, nay mở lại một nửa**
+### Q11. SQLite + đăng nhập — **đã chốt**
+
+> **ĐÃ CHỐT (2026-08-28).** Giữ SQLite. Auth đã làm xong mà không đổi DB — với một tiến trình và
+> vài người dùng, "một writer tại một thời điểm" chưa thành vấn đề. Điều kiện đổi sang Postgres
+> giữ nguyên như phân tích bên dưới.
 
 > **Cập nhật 2026-08-07 — nửa "SQLite" đã chốt lại: GIỮ SQLite.**
 >
@@ -262,28 +266,27 @@ Ghi lại ở đây để không ai mở lại vô cớ. Lý do đầy đủ ở
 cloud — và khi đó auth là **bắt buộc**, không phải tùy chọn. Đổi lúc này sẽ đụng
 `schema.prisma`, `app.ts` và toàn bộ tầng test.
 
-**Cập nhật 2026-08-07 → 2026-08-28 — bối cảnh đã đổi, và đã làm xong.** Chủ dự án nêu hướng
-nhiều người dùng và yêu cầu phân quyền; đăng nhập và phân quyền nay nằm trong phạm vi
-([`00-goals-and-scope.md`](00-goals-and-scope.md) §2,
+Bối cảnh đã đổi từ 2026-08-07: chủ dự án nêu hướng nhiều người dùng và yêu cầu phân quyền; đăng
+nhập và phân quyền nằm trong phạm vi ([`00-goals-and-scope.md`](00-goals-and-scope.md) §2,
 [`../features/auth/SPEC.md`](../features/auth/SPEC.md),
 [`../features/rbac/SPEC.md`](../features/rbac/SPEC.md)) và **đã triển khai xong** (giai đoạn
 A–D). Bản đang chạy có phiên đăng nhập, CSRF, chống brute-force và phân quyền —
 **vẫn chỉ giới hạn ở localhost**, nhưng vì lý do khác: chưa có audit log cho thao tác RBAC, và
 cache quyền nằm trong bộ nhớ tiến trình nên chạy nhiều instance sẽ sai im lặng.
 
-Nửa "SQLite" **vẫn đang chốt** cho tới khi có ai quyết ngược lại — nhưng lập luận đỡ nó ("một
-người dùng, một tiến trình ghi") đã yếu đi từ khi có đăng nhập thật, nên đây là mục sẽ phải xem
-lại sớm, không phải mục yên ổn nữa. Q12–Q15 dưới đây là các câu hỏi sinh ra từ quyết định thêm
-auth/rbac — cả bốn nay đã có câu trả lời.
+Quyết định "giữ SQLite" và mốc đổi ("khi có người dùng thật thứ hai") ở trên **không đổi** dù đã
+có đăng nhập thật — auth thêm hàng ghi, không thêm tiến trình ghi. Q12–Q15 dưới đây là các câu
+hỏi sinh ra từ quyết định thêm auth/rbac — cả bốn nay đã có câu trả lời.
 
 Nguồn: `2026-08-06-original-design.md` §12 mục 1; cập nhật 2026-08-07 theo yêu cầu của chủ dự án.
 
 ### Q12. Bao giờ bật auth, và bật theo trình tự nào — **đã trả lời**
 
-> **Cập nhật 2026-08-28.** Bật một lần cho toàn bộ API, không bật dần từng feature:
-> `requireAuth` mắc đúng một lần ở `app.ts`, `permissionGuard` mắc đúng một lần ở `/api`, mặc
-> định TỪ CHỐI — route không khai trong `permissionRegistry.ts` trả `403`. Không có đường thoát
-> tạm thời nào được giữ lại.
+> **ĐÃ CHỐT (2026-08-28).** Trình tự là bốn giai đoạn A→D của
+> `../superpowers/specs/2026-08-10-auth-rbac-3-roles-design.md` §10, đã chạy hết. `requireAuth`
+> mắc một lần ở `app.ts`; `permissionGuard` cắm một lần ở `/api`, mặc định TỪ CHỐI — route không
+> khai trong `permissionRegistry.ts` trả `403`. Toàn bộ test cũ được sửa sang phiên thật trong
+> cùng đợt, không để lại giai đoạn nào test đỏ. Không có đường thoát tạm thời nào được giữ lại.
 
 **Bối cảnh (lúc còn mở).** Có spec cho `auth` và `rbac`, chưa có code. Năm feature backend đang
 chạy đều giả định một hằng người dùng cố định và không middleware nào đứng trước chúng để xác
@@ -297,11 +300,13 @@ Nguồn: quyết định 2026-08-07, trả lời 2026-08-28. Chi tiết trình t
 
 ### Q13. Dữ liệu người dùng cũ migrate thế nào — **đã trả lời**
 
-> **Cập nhật 2026-08-28 — đã xong.** Tài khoản `trang1302@uitgis.vn` là chủ dữ liệu. Bốn bảng
-> dữ liệu nay có khóa ngoại `NOT NULL` tới `User`; hằng số cũ dùng để đánh dấu bản ghi trước khi
-> có tài khoản thật đã bị xóa khỏi code.
+> **ĐÃ CHỐT (2026-08-28).** Không migrate hàng nào. DB thật lúc đó chưa có bản ghi
+> `userId = 'local'` nào cần cứu, nên bước "backfill dữ liệu" của plan gốc bị bỏ. Việc còn lại
+> chỉ là gán vai trò: `npm run seed:rbac` đặt `roleId` cho tài khoản chưa có — tài khoản cũ nhất
+> nhận `SYSTEM_ADMIN`, còn lại nhận `USER`. Bốn bảng dữ liệu nay có khóa ngoại `NOT NULL` tới
+> `User`; hằng số cũ dùng để đánh dấu bản ghi trước khi có tài khoản thật đã bị xóa khỏi code.
 
-> **Cập nhật 2026-08-07 — email đã có, phần còn lại vẫn mở.**
+> **Cập nhật 2026-08-07 — email đã có, kế hoạch lúc đó (chưa biết sẽ không cần migrate).**
 >
 > Chủ dự án cung cấp email cho tài khoản đầu tiên: **`trang1302@uitgis.vn`**.
 >
@@ -309,11 +314,13 @@ Nguồn: quyết định 2026-08-07, trả lời 2026-08-28. Chi tiết trình t
 > `.env.example`. Nhét vào script seed là nó nằm trong lịch sử git vĩnh viễn, và xóa file
 > sau đó không gỡ được nó ra khỏi các commit cũ.
 >
-> Hai cách hợp lệ, `auth/PLAN.md` chọn một khi implement:
+> Hai cách hợp lệ dự tính lúc đó, cho trường hợp **phải** migrate dữ liệu cũ:
 > 1. Migrate tạo tài khoản **chưa có mật khẩu**, người dùng đặt ở lần đăng nhập đầu.
 > 2. Truyền qua biến môi trường **một lần** lúc chạy migrate, không lưu lại.
 >
-> Trong DB luôn là băm Argon2id, không bao giờ là chuỗi đọc được.
+> Trong DB luôn là băm Argon2id, không bao giờ là chuỗi đọc được. Trên thực tế bước migrate
+> không xảy ra (xem cập nhật 2026-08-28 ở trên): tài khoản `trang1302@uitgis.vn` có được qua
+> đăng ký thật, không qua script migrate dữ liệu cũ.
 
 **Bối cảnh (lúc còn mở).** Mọi bản ghi khi đó mang một giá trị cố định, một chuỗi tự do không
 trỏ tới hàng nào. Bảng `User` chưa tồn tại ([`02-data-model.md`](02-data-model.md)).
@@ -329,8 +336,12 @@ Nguồn: quyết định 2026-08-07.
 
 ### Q14. Đăng ký tự do hay chỉ admin tạo tài khoản — **đã trả lời**
 
-> **Cập nhật 2026-08-28.** Đăng ký mở công khai (`POST /api/auth/register`, không cần đăng
-> nhập trước). Vai trò gán cứng phía server (mặc định `USER`) — **không** đọc từ body request.
+> **ĐÃ CHỐT (2026-08-28).** Cả hai đường đều có: `POST /api/auth/register` mở công khai (vai trò
+> `USER` gán cứng phía server, không đọc từ body), và `POST /api/users` cho ai có quyền
+> `user:manage`. Nợ đi kèm ghi tường minh ở
+> [`../superpowers/specs/2026-08-10-auth-rbac-3-roles-design.md`](../superpowers/specs/2026-08-10-auth-rbac-3-roles-design.md)
+> §7: **đăng ký mở mà email chưa qua xác thực thì form đăng ký chính là công cụ liệt kê tài khoản** —
+> phải xử lý trước khi mở ra khỏi localhost.
 
 **Bối cảnh (lúc còn mở).** Chưa chốt cách một người có tài khoản.
 
@@ -345,10 +356,13 @@ Nguồn: quyết định 2026-08-07. Hình dạng cụ thể thuộc `../feature
 
 ### Q15. Admin có được xem dữ liệu sức khỏe của người khác không — **đã trả lời**
 
-> **Cập nhật 2026-08-28.** Không. RBAC gác chức năng (403), ownership gác hàng dữ liệu (404) —
-> hai lớp tách rời. `SYSTEM_ADMIN` có quyền `log:view` vẫn **không** đọc được nhật ký của người
-> khác; quyền đó chỉ mở chức năng, không mở hàng dữ liệu của người khác. Admin quản lý tài
-> khoản và vai trò, không quản lý số đo cơ thể.
+> **ĐÃ CHỐT (2026-08-28) — KHÔNG.** Không vai trò nào đọc được dữ liệu sức khỏe của người khác,
+> kể cả `SYSTEM_ADMIN`. RBAC gác chức năng (403), ownership gác hàng dữ liệu (404) — hai lớp
+> tách rời: `log:view` chỉ mở CHỨC NĂNG "xem nhật ký", hàng nào hiện ra vẫn do ownership quyết
+> định. Muốn đảo phải thêm một quyền MỚI (`log:view-any`) kèm log truy cập — không phải nâng
+> quyền hiện có. Admin quản lý tài khoản và vai trò, không quản lý số đo cơ thể. Khóa bằng
+> `test/features/userIsolation.test.ts` và ca "SYSTEM_ADMIN cũng KHÔNG đọc được dữ liệu người
+> khác" trong `test/features/rbac/permissionGuard.test.ts`.
 
 **Đây là câu hỏi quyền riêng tư, không phải câu hỏi kỹ thuật.** Kỹ thuật thì làm kiểu gì cũng
 được; cái phải quyết là **có nên**.
