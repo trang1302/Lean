@@ -14,7 +14,7 @@
 | Muốn thêm AI ước tính calo từ ảnh thì gắn vào đâu? | `overview/05-future-ai.md` |
 | Đăng nhập và phiên hoạt động ra sao? | `features/auth/SPEC.md` |
 | Vai trò và quyền chia thế nào? | `features/rbac/SPEC.md` |
-| Vì sao trước đây cố tình không có đăng nhập, và vì sao đổi? | `overview/00-goals-and-scope.md` |
+| Lịch sử: tại sao thêm xác thực vào dự án? | `overview/00-goals-and-scope.md` §2 |
 | Còn gì chưa chốt, cái nào là bug cần sửa? | `overview/06-open-questions.md` |
 | Một endpoint cụ thể hành xử thế nào? | `features/<tên>/SPEC.md` |
 | Feature đó đã xong chưa, còn nợ gì? | `features/<tên>/PLAN.md` |

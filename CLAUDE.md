@@ -62,7 +62,7 @@ Lean/
 
 **Mọi CRUD đi đủ 4 lớp** controller → service → repository → Prisma, kể cả khi service chỉ chuyển tiếp. Nhất quán quan trọng hơn việc tiết kiệm vài file.
 
-**Mọi bảng có `userId`, và nguồn của nó là phiên đăng nhập.** `requireAuth` (mắc MỘT lần ở `app.ts`, trước năm router dữ liệu) gắn `req.user.id`; controller truyền xuống service, service xuống repository. Hằng `LOCAL_USER_ID` và `src/shared/constants.ts` **đã bị xóa** — thấy tên đó ở đâu là tài liệu cũ.
+**Mọi bảng có `userId`, và nguồn của nó là phiên đăng nhập.** `requireAuth` (mắc MỘT lần ở `app.ts`, trước năm router dữ liệu) gắn `req.user.id`; controller truyền xuống service, service xuống repository. Hằng người-dùng-cục-bộ cũ và `src/shared/constants.ts` **đã bị xóa** ở giai đoạn A — thấy tên hằng đó ở tài liệu nào thì tài liệu đó là bản cũ.
 
 **Mọi truy vấn PHẢI mang `userId`, kể cả khi tra theo khóa chính.** `Meal.id` là cuid toàn cục nên `where: { id }` trần chạm được bản ghi người khác. Chỗ dễ quên nhất là `groupBy` trong `summary.repository.ts`: thiếu `userId` ở đó là gộp calo của mọi người vào một tổng, không ném lỗi, không test feature nào bắt được. `test/features/userIsolation.test.ts` là lưới an toàn cho đúng lớp lỗi này.
 

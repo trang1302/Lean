@@ -185,11 +185,14 @@ Nếu sau này đổi ý: `docs/overview/05-future-ai.md` mô tả đường m�
 
 ## Bảo mật
 
-SQLite + không đăng nhập là **quyết định có chủ đích** cho bối cảnh localhost một người: không
-có middleware xác thực, mọi bản ghi mang một `LOCAL_USER_ID` cố định.
+App có xác thực thật: phiên server-side (cookie `httpOnly`), CSRF double-submit, mật khẩu
+Argon2id, khóa đăng nhập sau 5 lần sai trong 15 phút, và phân quyền theo vai trò
+(`USER` / `ADMIN` / `SYSTEM_ADMIN`).
 
-Hệ quả: bất kỳ ai chạm được cổng 3000 đều đọc/ghi được toàn bộ dữ liệu. `app.listen()` hiện
-không chỉ định host, nên nếu máy bạn mở cổng ra ngoài thì API cũng mở theo — chỉ chạy app trên
-máy cá nhân, sau tường lửa.
+Hai lớp trực giao, cần cả hai: **RBAC** gác chức năng (`403`), **ownership** gác hàng dữ liệu
+(`404`). `SYSTEM_ADMIN` có quyền `log:view` vẫn **không** đọc được nhật ký của người khác.
 
-**Nếu mở app ra mạng LAN hoặc cloud thì bắt buộc thêm auth trước.** Không có ngoại lệ.
+Bootstrap máy mới: `npm run seed:rbac` rồi (tùy chọn) `npm run seed:users`.
+
+**Vẫn nên chỉ chạy localhost** cho tới khi có audit log cho thao tác phân quyền, và cho tới khi
+cache quyền chuyển sang Redis nếu chạy nhiều tiến trình.

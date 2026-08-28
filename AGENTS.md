@@ -14,8 +14,8 @@ Stack (luôn dùng bản mới nhất): Express 5 + TypeScript 7 + Prisma 7 + SQ
 Zod 4 + node-cron 4 (server) · React 19 + Vite 8 + Recharts 3 (web) ·
 Vitest 4 + supertest (test).
 
-Cấu trúc feature-first 4 lớp, bám quán lệ của `upip`. Mọi bảng có cột `userId`
-dù chưa có đăng nhập — dùng hằng `LOCAL_USER_ID`.
+Cấu trúc feature-first 4 lớp, bám quán lệ của `upip`. Mọi bảng có cột `userId`,
+giá trị đến từ phiên đăng nhập.
 
 Tài liệu: `docs/README.md` là bản đồ. Phần dùng chung ở `docs/overview/`,
 mỗi chức năng có `docs/features/<tên>/SPEC.md` + `PLAN.md`.
@@ -31,8 +31,10 @@ spec". Code và tài liệu lệch nhau thì **code đúng**, sửa tài liệu 
   `server/src/lib/time.ts`, timezone `Asia/Ho_Chi_Minh`.
 - **Mọi phép tính nằm trong `server/src/shared/stats/` dưới dạng hàm thuần** —
   không đọc DB, không đụng HTTP. Service lấy dữ liệu rồi gọi hàm.
-- **Mọi truy vấn mang `userId`**, lấy từ `LOCAL_USER_ID` trong
-  `server/src/shared/constants.ts`.
+- **Mọi truy vấn mang `userId`**, lấy từ `req.user!.id` ở controller rồi truyền
+  xuống service làm tham số đầu tiên. Service không đọc `req`.
+- **Route mới phải khai vào `server/src/shared/rbac/permissionRegistry.ts`** —
+  mặc định là TỪ CHỐI, không khai là `403`.
 - **Viết test trước implementation.** `shared/stats/` là ưu tiên test cao nhất.
 - **Validate mọi input bằng Zod.** Validate hỏng → `400` kèm danh sách trường sai.
   Không tìm thấy → `404`.
@@ -54,11 +56,9 @@ spec". Code và tài liệu lệch nhau thì **code đúng**, sửa tài liệu 
   tôn trọng điều đó.
 - **NEVER** tính ngày không ghi bữa nào là 0 calo khi lấy trung bình tuần. Bỏ qua
   ngày đó.
-- **NEVER** mở ra LAN/cloud khi chưa làm xong `auth` + `rbac`. Bản đang chạy
-  không có xác thực — mở mạng là phơi toàn bộ dữ liệu sức khỏe.
-  (Auth/phân quyền **đã có spec + plan** ở `docs/features/{auth,rbac}/` từ
-  2026-08-07, chưa implement. Được phép làm khi có yêu cầu — đây không còn là
-  điều cấm như bản trước của file này.)
+- **NEVER** mở ra LAN/cloud ngoài localhost hiện tại. Auth + RBAC đã hoàn tất
+  (spec + plan ở `docs/features/{auth,rbac}/`), nhưng vẫn cần chỉ chạy localhost
+  cho tới khi có audit log RBAC và cache quyền chuyển sang Redis.
 - **NEVER** thêm AI phân tích ảnh, lưu ảnh bữa ăn,
   hay DB món ăn dựng sẵn. Đây là những thứ §2 của spec đã cố tình loại bỏ —
   đọc lý do ở đó rồi hỏi trước khi đề xuất lại.
@@ -74,11 +74,10 @@ spec". Code và tài liệu lệch nhau thì **code đúng**, sửa tài liệu 
   hơn điểm thô, nếu không người dùng đọc sai xu hướng.
 - Nhắc nhở chỉ chạy khi server bật. Máy tắt thì không có nhắc và không gửi bù.
   Điều này phải được ghi rõ trên giao diện Cài đặt.
-- SQLite + không auth là quyết định có chủ đích cho bối cảnh localhost một người.
-  Phần "không auth" **đã được đảo ngày 2026-08-07** — xem
-  `docs/overview/00-goals-and-scope.md`. Spec + plan có ở
-  `docs/features/{auth,rbac}/`, code thì chưa. Cho tới khi code xong: chỉ chạy
-  localhost.
+- Auth + RBAC đã hoàn tất (2026-08-28), nhưng vẫn nên chỉ chạy localhost cho tới
+  khi có audit log RBAC và cache quyền chuyển sang Redis. Trước 2026-08-07,
+  quyết định thiết kế là bỏ xác thực — quyết định này **đã được đảo ngày
+  2026-08-07** (xem `docs/overview/00-goals-and-scope.md` §2).
 
 ## Lệnh
 
