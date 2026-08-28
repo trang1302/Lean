@@ -11,6 +11,8 @@ import { mealsRouter } from './features/meals/index.js';
 import { goalRouter } from './features/goal/index.js';
 import { summaryRouter } from './features/summary/index.js';
 import { remindersRouter } from './features/reminders/index.js';
+import { permissionsRouter, rolesRouter } from './features/rbac/index.js';
+import { usersRouter } from './features/users/index.js';
 import { errorHandler, notFoundHandler } from './shared/errors/errorHandler.js';
 import { permissionGuard } from './shared/rbac/permissionGuard.js';
 import { csrfProtection } from './shared/security/csrf.js';
@@ -113,6 +115,12 @@ export function createApp(): express.Express {
   app.use('/api/goal', goalRouter);
   app.use('/api/summary', summaryRouter);
   app.use('/api/reminders', remindersRouter);
+
+  // API quản trị. Không có guard riêng — chúng đi qua đúng `permissionGuard`
+  // phía trên như năm router dữ liệu, chỉ khác mã quyền mà registry đòi.
+  app.use('/api/users', usersRouter);
+  app.use('/api/permissions', permissionsRouter);
+  app.use('/api/roles', rolesRouter);
 
   // Thứ tự bắt buộc: notFound trước, errorHandler cuối cùng.
   app.use(notFoundHandler);

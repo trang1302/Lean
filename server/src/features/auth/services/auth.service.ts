@@ -118,6 +118,15 @@ export async function authenticate(input: LoginInput, ip: string): Promise<Publi
  * được nhờ cột `userId` nằm sẵn trong bảng `Session` — đó là lý do một session
  * store lưu phiên dưới dạng blob không khóa được theo user bị loại từ đầu.
  */
+/**
+ * Thu hồi MỌI phiên của một user — dùng khi khóa/xóa tài khoản và khi reset
+ * mật khẩu. Khác `revokeOtherSessions` ở chỗ không chừa phiên nào: người bị
+ * khóa phải mất quyền truy cập ngay, kể cả tab đang mở.
+ */
+export async function revokeAllSessions(userId: string): Promise<number> {
+  return sessionRepository.deleteSessionsByUserId(userId);
+}
+
 export async function revokeOtherSessions(
   userId: string,
   keepSessionId: string,
