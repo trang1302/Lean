@@ -97,12 +97,12 @@ describe('tài liệu sống không được mô tả trạng thái trước khi
   });
 
   it('không còn khẳng định app chưa có đăng nhập', () => {
-    expect(findAll(/chưa có đăng nhập|không có đăng nhập|Không có đăng nhập/)).toEqual([]);
+    expect(findAll(/(không|chưa)[*_\s]+(có[*_\s]+)?đăng nhập/i)).toEqual([]);
   });
 
   it('không còn khẳng định app không có middleware xác thực', () => {
     expect(
-      findAll(/không\s+(có\s+)?auth|chưa\s+(có\s+)?auth|không có middleware xác thực|không có xác thực|chưa có xác thực/i),
+      findAll(/(không|chưa)[*_\s]+(có[*_\s]+)?auth|(không|chưa)[*_\s]+(có[*_\s]+)?xác thực|không có middleware xác thực/i),
     ).toEqual([]);
   });
 

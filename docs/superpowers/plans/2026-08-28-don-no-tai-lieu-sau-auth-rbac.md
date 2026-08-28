@@ -554,6 +554,9 @@ git commit -m "docs: rewrite security section for the authenticated app"
 - Modify: `docs/features/goal/SPEC.md:37` · `goal/PLAN.md:25,38`
 - Modify: `docs/features/reminders/SPEC.md:114-116`
 - Modify: `docs/features/meals/SPEC.md:197` · `docs/features/rbac/SPEC.md:192,589` · `docs/features/web-shell/PLAN.md:15,62,478`
+- Modify: `docs/features/body-logs/PLAN.md:62` — trỏ tới `server/src/shared/constants.ts` (đã xóa).
+  Test canh KHÔNG bắt được dòng này (nó không chứa chuỗi `LOCAL_USER_ID`), nên phải sửa bằng tay.
+  Review Task 2 tìm ra lớp lỗi này.
 
 > **Đây không chỉ là đổi tên hằng.** `meals/SPEC.md:239` viết *"Đúng một chỗ … repository không
 > phải sửa một dòng nào"* — câu đó đã thành quá khứ và cần chuyển sang thì hoàn thành.

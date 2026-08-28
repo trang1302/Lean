@@ -177,7 +177,7 @@ thật, lượng dầu mỡ hay cách chế biến — và nó là phần duy nh
 tay chính xác hơn, nhanh hơn với vài món ăn quen thuộc, và miễn phí.
 
 Cùng lý do đó, app cũng **không** lưu ảnh bữa ăn, **không** có database món ăn dựng sẵn,
-**không** có đăng nhập và **không** truy cập được từ điện thoại. Mỗi mục đều có lý do riêng ở
+và **không** truy cập được từ điện thoại. Ba quyết định này đều có lý do riêng ở
 `docs/overview/00-goals-and-scope.md` §2 — đọc trước khi đề xuất thêm lại.
 
 Nếu sau này đổi ý: `docs/overview/05-future-ai.md` mô tả đường mở rộng đã chừa sẵn, thêm vào
@@ -195,4 +195,5 @@ Hai lớp trực giao, cần cả hai: **RBAC** gác chức năng (`403`), **own
 Bootstrap máy mới: `npm run seed:rbac` rồi (tùy chọn) `npm run seed:users`.
 
 **Vẫn nên chỉ chạy localhost** cho tới khi có audit log cho thao tác phân quyền, và cho tới khi
-cache quyền chuyển sang Redis nếu chạy nhiều tiến trình.
+cache quyền chuyển sang Redis nếu chạy nhiều tiến trình. `app.listen()` không chỉ định host,
+nên nếu máy bạn mở cổng 3000 ra ngoài thì API mở theo — luôn chạy app trên máy cá nhân, sau tường lửa.
