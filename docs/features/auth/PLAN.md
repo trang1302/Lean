@@ -88,6 +88,10 @@ Một test nhỏ trong `server/test/lib/db.test.ts` kiểu như các test hiện
 
 ### Bước 3 — MIGRATE DỮ LIỆU ⚠️ **Bước dễ mất dữ liệu nhất**
 
+> **BỎ (2026-08-28).** Bước này giả định có sẵn bản ghi `userId = 'local'` cần cứu. DB thật không
+> có bản ghi nào như vậy lúc bật auth, nên không migrate gì. Việc còn lại — gán vai trò cho tài
+> khoản chưa có — nằm ở `npm run seed:rbac`. Xem `06-open-questions.md` Q13.
+
 Toàn bộ dữ liệu hiện có mang `userId = 'local'` (`server/src/shared/constants.ts:9`). Bảng
 `User` thì trống. Bước này nối hai thứ đó lại.
 

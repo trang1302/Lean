@@ -697,6 +697,11 @@ phải quyết định kỹ thuật thuần.
 
 ## 10. Chỗ mâu thuẫn với tài liệu hiện có
 
+> **ĐÃ TRẢ XONG (2026-08-28).** Điều kiện *"không sửa file nào trong danh sách này khi chưa có
+> code chạy"* đã thỏa: code chạy từ commit `9422401`. Mọi dòng trong bảng dưới đã được cập nhật,
+> và `server/test/docs/docsConsistency.test.ts` canh để chúng không quay lại. Giữ nguyên bảng —
+> nó ghi lại vì sao từng file phải sửa.
+
 Feature này làm **sai lệch** một loạt khẳng định đang có trong repo. Liệt kê ở đây để việc
 cập nhật là hành động tường minh, không phải phát hiện tình cờ. **Không sửa file nào trong
 danh sách này khi chưa có code chạy** — tài liệu Lean mô tả hành vi thật, không mô tả ý định.

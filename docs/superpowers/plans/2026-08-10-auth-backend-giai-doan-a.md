@@ -105,7 +105,7 @@ thúc với test đỏ.
   `AppError.accountDisabled()`, `AppError.csrfFailed()`, `AppError.tooManyAttempts()` ·
   `req.session.userId?: string` · `req.user?: { id: string }`
 
-- [ ] **Step 1: Cài phụ thuộc**
+- [x] **Step 1: Cài phụ thuộc**
 
 Tra bản mới nhất trước khi cài — ràng buộc `docs/overview/04-conventions.md:13`. **Không** cài
 `connect-sqlite3` (lý do loại ở `auth/SPEC.md:109-125`).
@@ -116,7 +116,7 @@ npm i express-session @node-rs/argon2 helmet csrf-csrf
 npm i -D @types/express-session
 ```
 
-- [ ] **Step 2: Viết test thất bại cho 6 mã lỗi mới**
+- [x] **Step 2: Viết test thất bại cho 6 mã lỗi mới**
 
 ```ts
 // server/test/shared/errors/appError.test.ts
@@ -161,12 +161,12 @@ describe('AppError — mã lỗi của auth', () => {
 });
 ```
 
-- [ ] **Step 3: Chạy test, xác nhận đỏ**
+- [x] **Step 3: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/shared/errors/appError.test.ts`
 Expected: FAIL — `AppError.unauthorized is not a function`, và `tsc` báo mã lỗi không thuộc union.
 
-- [ ] **Step 4: Mở rộng `AppErrorCode` + factory**
+- [x] **Step 4: Mở rộng `AppErrorCode` + factory**
 
 ```ts
 // server/src/shared/errors/AppError.ts — thay dòng 1
@@ -215,12 +215,12 @@ Thêm vào class, cạnh `notFound` / `validation`:
   }
 ```
 
-- [ ] **Step 5: Chạy test, xác nhận xanh**
+- [x] **Step 5: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/shared/errors/appError.test.ts`
 Expected: PASS — 6 test.
 
-- [ ] **Step 6: Thêm `SESSION_SECRET` và `NODE_ENV` vào `env.ts`**
+- [x] **Step 6: Thêm `SESSION_SECRET` và `NODE_ENV` vào `env.ts`**
 
 ```ts
 // server/src/config/env.ts
@@ -254,7 +254,7 @@ SESSION_SECRET="thay-bang-32-ky-tu-ngau-nhien-tro-len"
 
 Sinh secret thật cho `.env`: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`
 
-- [ ] **Step 7: Thêm `SESSION_SECRET` cho môi trường test**
+- [x] **Step 7: Thêm `SESSION_SECRET` cho môi trường test**
 
 Không có bước này thì mọi test import `app.ts` sẽ chết ở `envSchema.parse`.
 
@@ -267,7 +267,7 @@ Không có bước này thì mọi test import `app.ts` sẽ chết ở `envSche
     },
 ```
 
-- [ ] **Step 8: Mở rộng kiểu cho `express-session`**
+- [x] **Step 8: Mở rộng kiểu cho `express-session`**
 
 Thiếu file này thì `req.session.userId` không qua được `tsc --noEmit`.
 
@@ -294,7 +294,7 @@ declare global {
 }
 ```
 
-- [ ] **Step 9: Thêm nhánh nhận diện lỗi CSRF vào `errorHandler`**
+- [x] **Step 9: Thêm nhánh nhận diện lỗi CSRF vào `errorHandler`**
 
 `csrf-csrf` ném ra thứ **không phải** `AppError`. Không nhận diện thì nó rơi vào nhánh `500` ở
 `errorHandler.ts:54-58` và client thấy sai mã (`auth/SPEC.md:320`).
@@ -330,7 +330,7 @@ function isCsrfError(err: unknown): boolean {
 }
 ```
 
-- [ ] **Step 10: Verify toàn bộ**
+- [x] **Step 10: Verify toàn bộ**
 
 ```bash
 npx tsc --noEmit
@@ -345,7 +345,7 @@ node -e "delete process.env.SESSION_SECRET" # minh họa; thực tế: tạm đ�
 npm run dev   # kỳ vọng: tiến trình thoát với lỗi Zod nêu rõ SESSION_SECRET
 ```
 
-- [ ] **Step 11: Bàn giao**
+- [x] **Step 11: Bàn giao**
 
 Không commit. Báo cáo diff và đề xuất: `chore(auth): add session deps, SESSION_SECRET, auth error codes`
 
@@ -373,7 +373,7 @@ Không commit. Báo cáo diff và đề xuất: `chore(auth): add session deps, 
 > node -e "const D=require('better-sqlite3');const d=new D('./data.db',{readonly:true});for(const n of ['BodyLog','Meal','Goal','Reminder'])console.log(n,d.prepare('select count(*) c from \"'+n+'\"').get().c)"
 > ```
 
-- [ ] **Step 1: Viết test thất bại cho `@unique` và khóa ngoại**
+- [x] **Step 1: Viết test thất bại cho `@unique` và khóa ngoại**
 
 ```ts
 // server/test/lib/schema.test.ts
@@ -426,12 +426,12 @@ describe('khóa ngoại thật sự được cưỡng chế', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận đỏ**
+- [x] **Step 2: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/lib/schema.test.ts`
 Expected: FAIL — `prisma.user` không tồn tại.
 
-- [ ] **Step 3: Thêm ba model vào `schema.prisma`**
+- [x] **Step 3: Thêm ba model vào `schema.prisma`**
 
 ```prisma
 model User {
@@ -482,7 +482,7 @@ SQLite không có enum native; ràng buộc giá trị đặt ở Zod.
 `LoginAttempt` **cố ý không có quan hệ tới `User`**: lần thử vào email **không tồn tại** cũng
 phải ghi được, đó chính là dấu hiệu dò tài khoản (`auth/SPEC.md:404`).
 
-- [ ] **Step 4: Thêm đúng một dòng quan hệ vào bốn model hiện có**
+- [x] **Step 4: Thêm đúng một dòng quan hệ vào bốn model hiện có**
 
 Vào `BodyLog`, `Meal`, `Goal`, `Reminder` — **không đổi khóa chính, không đổi ràng buộc unique,
 không thêm cột nào khác**:
@@ -491,7 +491,7 @@ không thêm cột nào khác**:
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 ```
 
-- [ ] **Step 5: Push schema**
+- [x] **Step 5: Push schema**
 
 ```bash
 npx prisma db push
@@ -500,7 +500,7 @@ Expected: `Your database is now in sync with your Prisma schema`. Prisma 7 chặ
 migrate — nếu bị chặn, đặt `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=yes` **chỉ** cho lệnh này
 và báo lại cho chủ repo.
 
-- [ ] **Step 6: Chạy test, xác nhận xanh**
+- [x] **Step 6: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/lib/schema.test.ts`
 Expected: PASS — 3 test.
@@ -508,7 +508,7 @@ Expected: PASS — 3 test.
 Nếu test khóa ngoại **fail vì chèn lọt**: adapter chưa bật `PRAGMA foreign_keys`. Sửa
 `server/src/lib/db.ts` để bật, **đừng** gỡ quan hệ khỏi schema.
 
-- [ ] **Step 7: Toàn bộ test cũ phải còn xanh**
+- [x] **Step 7: Toàn bộ test cũ phải còn xanh**
 
 ```bash
 npm test
@@ -531,7 +531,7 @@ await prisma.user.upsert({
 Đây là bản vá tạm; Task 10 thay nó bằng helper thật. Ghi chú `// TODO(Task 10)` **không** được —
 thay bằng một dòng comment nêu rõ helper nào sẽ thế chỗ.
 
-- [ ] **Step 8: Bàn giao**
+- [x] **Step 8: Bàn giao**
 
 Đề xuất: `feat(auth): add User, Session, LoginAttempt models and relations`
 
@@ -553,7 +553,7 @@ thay bằng một dòng comment nêu rõ helper nào sẽ thế chỗ.
 > đang cài** — đảo nhầm hash với plaintext cho ra một hàm *luôn trả `false`*, và test "mật khẩu
 > sai bị từ chối" **vẫn xanh**. Đó là lý do Step 1 bắt buộc có ca "mật khẩu đúng trả `true`".
 
-- [ ] **Step 1: Viết test thất bại**
+- [x] **Step 1: Viết test thất bại**
 
 ```ts
 // server/test/shared/security/password.test.ts
@@ -605,12 +605,12 @@ describe('dummyHash', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận đỏ**
+- [x] **Step 2: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/shared/security/password.test.ts`
 Expected: FAIL — không phân giải được module.
 
-- [ ] **Step 3: Hiện thực**
+- [x] **Step 3: Hiện thực**
 
 ```ts
 // server/src/shared/security/password.ts
@@ -657,12 +657,12 @@ export function dummyHash(): Promise<string> {
 }
 ```
 
-- [ ] **Step 4: Chạy test, xác nhận xanh**
+- [x] **Step 4: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/shared/security/password.test.ts`
 Expected: PASS — 7 test.
 
-- [ ] **Step 5: Bàn giao**
+- [x] **Step 5: Bàn giao**
 
 Đề xuất: `feat(auth): argon2 password hashing helpers`
 
@@ -689,7 +689,7 @@ Expected: PASS — 7 test.
 > nuốt lỗi nhất: quên gọi `cb(err)` ở nhánh reject làm request **treo im lặng** tới timeout. Mỗi
 > hàm phải gọi callback đúng **một** lần trên **mọi** nhánh (`auth/PLAN.md:221`).
 
-- [ ] **Step 1: Viết test thất bại**
+- [x] **Step 1: Viết test thất bại**
 
 ```ts
 // server/test/features/auth/prismaSessionStore.test.ts
@@ -783,12 +783,12 @@ describe('PrismaSessionStore', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận đỏ**
+- [x] **Step 2: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/features/auth/prismaSessionStore.test.ts`
 Expected: FAIL — không phân giải được `prismaSessionStore.js`.
 
-- [ ] **Step 3: Hiện thực repository**
+- [x] **Step 3: Hiện thực repository**
 
 ```ts
 // server/src/features/auth/repositories/session.repository.ts
@@ -843,7 +843,7 @@ export async function deleteExpiredSessions(now: Date): Promise<number> {
 }
 ```
 
-- [ ] **Step 4: Hiện thực store**
+- [x] **Step 4: Hiện thực store**
 
 ```ts
 // server/src/features/auth/prismaSessionStore.ts
@@ -923,12 +923,12 @@ export async function pruneExpiredSessions(): Promise<number> {
 }
 ```
 
-- [ ] **Step 5: Chạy test, xác nhận xanh**
+- [x] **Step 5: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/features/auth/prismaSessionStore.test.ts`
 Expected: PASS — 6 test.
 
-- [ ] **Step 6: Bàn giao**
+- [x] **Step 6: Bàn giao**
 
 Đề xuất: `feat(auth): Prisma-backed express-session store`
 
@@ -957,7 +957,7 @@ Expected: PASS — 6 test.
 Chống brute-force **chưa** vào task này — Task 9 thêm, để endpoint đăng nhập được chứng minh
 đúng trước khi thêm lớp phòng thủ (`auth/PLAN.md:350`).
 
-- [ ] **Step 1: Viết test thất bại**
+- [x] **Step 1: Viết test thất bại**
 
 ```ts
 // server/test/features/auth/auth.controller.test.ts
@@ -1150,12 +1150,12 @@ describe('POST /api/auth/logout', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận đỏ**
+- [x] **Step 2: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/features/auth/auth.controller.test.ts`
 Expected: FAIL — 404 trên mọi route `/api/auth/*` vì chưa cắm router.
 
-- [ ] **Step 3: `user.repository.ts`**
+- [x] **Step 3: `user.repository.ts`**
 
 ```ts
 // server/src/features/auth/repositories/user.repository.ts
@@ -1204,7 +1204,7 @@ export async function updateLastLoginAt(userId: string, at: Date): Promise<void>
 }
 ```
 
-- [ ] **Step 4: DTO vào và ra**
+- [x] **Step 4: DTO vào và ra**
 
 ```ts
 // server/src/features/auth/dtos/auth.request.ts
@@ -1286,7 +1286,7 @@ export function toSessionResponse(user: PublicUser, expiresAt: Date | null): Ses
 }
 ```
 
-- [ ] **Step 5: `auth.service.ts`**
+- [x] **Step 5: `auth.service.ts`**
 
 ```ts
 // server/src/features/auth/services/auth.service.ts
@@ -1357,7 +1357,7 @@ export async function findPublicUserById(id: string): Promise<PublicUser | null>
 }
 ```
 
-- [ ] **Step 6: `requireAuth.ts`**
+- [x] **Step 6: `requireAuth.ts`**
 
 ```ts
 // server/src/features/auth/middleware/requireAuth.ts
@@ -1381,7 +1381,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
 }
 ```
 
-- [ ] **Step 7: `auth.controller.ts` + `index.ts`**
+- [x] **Step 7: `auth.controller.ts` + `index.ts`**
 
 ```ts
 // server/src/features/auth/controllers/auth.controller.ts
@@ -1481,7 +1481,7 @@ authRouter.use('/', authController);
 export { requireAuth } from './middleware/requireAuth.js';
 ```
 
-- [ ] **Step 8: Cắm router tối thiểu để test chạy được**
+- [x] **Step 8: Cắm router tối thiểu để test chạy được**
 
 Task 6 mới mắc đủ chuỗi middleware. Ở task này chỉ thêm `session` + `authRouter` vào `app.ts`,
 **chưa** thêm `requireAuth` trước năm router dữ liệu (thêm sớm sẽ làm 208 test cũ đỏ hàng loạt
@@ -1513,7 +1513,7 @@ trước khi có helper đăng nhập ở Task 10).
   app.use('/api/auth', authRouter);
 ```
 
-- [ ] **Step 9: Chạy test, xác nhận xanh**
+- [x] **Step 9: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/features/auth/auth.controller.test.ts`
 Expected: PASS — 15 test.
@@ -1522,7 +1522,7 @@ Ca `GET /api/auth/csrf` chưa tồn tại nên test "session id đổi" phải b
 Task 6. Nếu chọn đợi: đánh dấu ca đó `it.skip` **và** ghi lý do vào comment, rồi bỏ skip ở
 Task 6. Không để `it.skip` không giải thích.
 
-- [ ] **Step 10: Bàn giao**
+- [x] **Step 10: Bàn giao**
 
 Đề xuất: `feat(auth): register, login, logout, session endpoints`
 
