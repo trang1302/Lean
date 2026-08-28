@@ -70,12 +70,20 @@ interface Hit {
   text: string;
 }
 
+/**
+ * Một dòng chứa tên quyết định cũ (vd. "không đăng nhập") nhưng rõ ràng nêu
+ * nó đã được đảo/chốt/xong/trả lời là không phải khẳng định trạng thái hiện tại.
+ * Regex này không hoàn hảo — nó sẽ miss một câu khẳng định sai vừa tình cờ
+ * chứa chữ "đã chốt" — nhưng là cách rẻ nhất để tách "nhắc tới" khỏi "khẳng định".
+ */
+const REVERSED = /đã đảo|đã chốt|đã làm xong|đã trả lời|đã xong/i;
+
 function findAll(pattern: RegExp): Hit[] {
   const hits: Hit[] = [];
   for (const file of FILES) {
     const lines = readFileSync(file, 'utf8').split('\n');
     lines.forEach((text, index) => {
-      if (pattern.test(text)) {
+      if (pattern.test(text) && !REVERSED.test(text)) {
         hits.push({ file: relative(REPO_ROOT, file), line: index + 1, text: text.trim() });
       }
     });
