@@ -21,7 +21,7 @@ Prisma
 
 Bất kỳ phép tính nào nằm ngoài `shared/stats/` là sai chỗ. Bất kỳ `Date`/`DateTime`
 nào chạm vào field `date` là bug múi giờ. Bất kỳ truy vấn nào thiếu `userId` là bug
-cách ly dữ liệu — kể cả khi hiện tại chỉ có một người dùng.
+cách ly dữ liệu — kể cái khi tra theo khóa chính, vì `id` là cuid toàn cục nên `where: { id }` trần chạm được bản ghi của người khác.
 
 ## Quy trình
 
@@ -98,5 +98,6 @@ cách ly dữ liệu — kể cả khi hiện tại chỉ có một người dù
 | Truy vấn DB | `features/<f>/repositories/<f>.repository.ts` |
 | Ngày / múi giờ | `server/src/lib/time.ts` |
 | Phép tính | `server/src/shared/stats/` (hàm thuần) |
-| Hằng `userId` | `server/src/shared/constants.ts` |
+| Nguồn `userId` | `req.user!.id` — do `requireAuth` gắn, controller truyền xuống service |
+| Khai quyền cho route mới | `server/src/shared/rbac/permissionRegistry.ts` — không khai là 403 |
 | Đăng ký | `features/<f>/index.ts` export router → `src/app.ts`, prefix `/api` |

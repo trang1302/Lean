@@ -30,8 +30,8 @@ Không grep mù. Đọc theo thứ tự này:
 CLAUDE.md                      → quy ước bắt buộc
 server/src/lib/time.ts         → mọi thứ liên quan ngày đi qua đây
 server/src/shared/stats/       → hàm thuần đã có gì, đừng viết trùng
-server/src/shared/rbac/       → permissionRegistry (khai route mới ở đây), guard, cache
-server/src/features/auth/     → requireAuth gắn req.user; userId đến từ phiên
+server/src/shared/rbac/        → permissionRegistry (khai route mới ở đây), guard, cache
+server/src/features/auth/      → requireAuth gắn req.user; userId đến từ phiên
 server/prisma/schema.prisma    → bảng đã có gì
 server/src/features/*/         → pattern 4 lớp đang dùng
 server/test/*.test.ts          → convention test đang dùng
