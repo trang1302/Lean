@@ -1,6 +1,15 @@
 # Feature `rbac` — Phân quyền
 
-Tài liệu này mô tả **thiết kế dự kiến**, chưa có code. Trạng thái triển khai ở [`PLAN.md`](PLAN.md).
+**Đã có code (giai đoạn B + C, 2026-08-28).** Tài liệu này mô tả hành vi thật.
+Trạng thái triển khai ở [`PLAN.md`](PLAN.md).
+
+> **BA vai trò, không phải hai.** Bản gốc của tài liệu này chốt 2 vai trò
+> (`USER`, `ADMIN`) và viết rằng `SYSTEM_ADMIN` của upip *"vô nghĩa với một app
+> sức khỏe cá nhân và không được bê sang"*. Quyết định đó **đã bị đảo có chủ
+> đích** ngày 2026-08-10 theo yêu cầu của chủ dự án — xem
+> [`../../superpowers/specs/2026-08-10-auth-rbac-3-roles-design.md`](../../superpowers/specs/2026-08-10-auth-rbac-3-roles-design.md)
+> §3, và đó là tài liệu THẮNG khi hai bên mâu thuẫn. §2, §4, §9 và §10 dưới đây
+> đã được sửa cho khớp code; phần còn lại (§5–§8) không bị ảnh hưởng.
 
 Khuôn mẫu: `C:\Project\WorkSpace\upip\docs\specs\business\auth\SPEC-BIZ-18-rbac-permissions.md`
 (chỉ có trên máy dev, không thuộc repo này). Mô hình và bốn nguyên tắc của upip được giữ
@@ -19,7 +28,7 @@ khi đọc §5 ở đây**).
 Mô hình **RBAC: User → Role → Permission**, bám upip.
 
 - Mỗi **User** gắn **đúng 1 Role** (cột `User.roleId`); Role có nhiều **Permission**.
-- **2 vai trò**: `USER`, `ADMIN`. **10 quyền** dạng `resource:action`.
+- **3 vai trò**: `USER`, `ADMIN`, `SYSTEM_ADMIN`. **10 quyền** dạng `resource:action`.
 - Enforcement **100% ở một middleware duy nhất** `permissionGuard`, cắm một lần trong
   `app.ts`. **Không** có `if (user.role === 'ADMIN')` nào trong controller/service.
 - Endpoint → quyền khai tập trung ở `permissionRegistry`, khớp **dòng đầu tiên thắng**.
@@ -33,27 +42,30 @@ Mô hình **RBAC: User → Role → Permission**, bám upip.
 
 ---
 
-## 2. Hai vai trò
+## 2. Ba vai trò
 
 Cố tình tối thiểu. upip có 4 vai trò vì nó là hệ thống nhiều cơ quan hành chính
-(`SYSTEM_ADMIN`, `DHUP`, `DPWT`, `OPWT`); những vai trò đó vô nghĩa với một app sức khỏe cá
-nhân và **không được bê sang**.
+(`SYSTEM_ADMIN`, `DHUP`, `DPWT`, `OPWT`); ba vai trò theo cơ quan/vùng địa lý vẫn **không được
+bê sang** — Lean không có cơ quan. `SYSTEM_ADMIN` thì có, vì chủ dự án cần một cấp **trên**
+`ADMIN`: người quản lý tài khoản không được đồng thời là người tự nâng vai trò của mình.
 
 | Role code | Là ai | Vì sao vai trò này tồn tại |
 |---|---|---|
 | `USER` | Người dùng thường | Vai trò mặc định của mọi tài khoản. Ghi và đọc **dữ liệu của chính mình**: nhật ký cơ thể, bữa ăn, mục tiêu, nhắc nhở. Không thấy màn quản trị. Đây là vai trò mà 100% người dùng thật sẽ mang. |
-| `ADMIN` | Quản trị hệ thống | Tồn tại vì có đúng một nhóm việc mà `USER` không làm được: **quản lý tài khoản và phân quyền** — tạo/khóa tài khoản, gán vai trò, sửa ma trận quyền. Không có vai trò này thì việc gán vai trò cho người đầu tiên phải làm bằng tay trong DB. |
+| `ADMIN` | Quản trị tài khoản | Tạo, khóa, mở khóa, xóa tài khoản và đặt lại mật khẩu. **KHÔNG** gán được vai trò và **KHÔNG** sửa được ma trận quyền — cấp `rbac:manage` cho vai trò này là cho nó tự nâng mình lên `SYSTEM_ADMIN`. Cũng **không** thao tác được trên tài khoản `SYSTEM_ADMIN` (§10). |
+| `SYSTEM_ADMIN` | Quản trị hệ thống | Cấp cao nhất: đủ 10 quyền. Là vai trò duy nhất gán được vai trò và sửa được ma trận quyền. Không có nó thì việc gán vai trò cho người đầu tiên phải làm bằng tay trong DB. |
 
 Quy ước code: **không có tiền tố `ROLE_`** (giống upip). Role code là chuỗi trần, viết
 `UPPER_SNAKE_CASE`.
 
-`ADMIN` là **siêu tập** của `USER` về mặt quyền: nó vẫn ghi nhật ký của chính nó như người
-thường. Khác biệt duy nhất là 4 quyền quản trị ở §4.
+Ba vai trò là ba **siêu tập** lồng nhau: `USER` ⊂ `ADMIN` ⊂ `SYSTEM_ADMIN`. Cả ba vẫn ghi nhật
+ký của chính mình như người thường; khác biệt nằm ở 4 quyền quản trị của §4.
 
 ### Vai trò KHÔNG có trong bản này
 
 | Vai trò bị loại | Vì sao chưa làm |
 |---|---|
+| Phân tách theo cơ quan (`DHUP`/`DPWT`/`OPWT` của upip) | Lean không có cơ quan, không có vùng địa lý. |
 | `COACH` (huấn luyện viên xem dữ liệu học viên) | **Không phải chỉ thêm một role.** Xem dữ liệu sức khỏe của người khác đòi hỏi một cơ chế **đồng ý của chủ dữ liệu**: bảng cấp quyền theo cặp (chủ dữ liệu, người xem), phạm vi (chỉ cân nặng? cả bữa ăn?), thời hạn, thu hồi bất cứ lúc nào, và log truy cập. RBAC theo vai trò không diễn đạt được "A đồng ý cho B xem" — nó chỉ diễn đạt được "B thuộc nhóm nào". Ghi vào §12 (mở rộng tương lai). |
 | `READONLY` / `VIEWER` | Chưa có ca dùng. Thêm khi có người thật cần nó. |
 | Phân tách theo tổ chức (kiểu `DPWT`/`OPWT` của upip) | Lean không có cơ quan, không có vùng địa lý. |
@@ -109,33 +121,35 @@ có ca "cho ghi nhật ký nhưng không cho tự cấu hình nhắc nhở".
 Ký hiệu: **Ⓞ** = có quyền, **nhưng chỉ trên dữ liệu của chính mình** (ownership vẫn chặn —
 §5) · **✅** = có quyền, phạm vi toàn hệ thống · **❌** = không có.
 
-| Permission | `USER` | `ADMIN` |
-| :--------------- | :----: | :-----: |
-| `log:view`       |   Ⓞ    |    Ⓞ    |
-| `log:manage`     |   Ⓞ    |    Ⓞ    |
-| `goal:view`      |   Ⓞ    |    Ⓞ    |
-| `goal:manage`    |   Ⓞ    |    Ⓞ    |
-| `reminder:view`  |   Ⓞ    |    Ⓞ    |
-| `reminder:manage`|   Ⓞ    |    Ⓞ    |
-| `user:view`      |   ❌   |   ✅    |
-| `user:manage`    |   ❌   |   ✅    |
-| `rbac:view`      |   ❌   |   ✅    |
-| `rbac:manage`    |   ❌   |   ✅    |
+| Permission | `USER` | `ADMIN` | `SYSTEM_ADMIN` |
+| :--------------- | :----: | :-----: | :------------: |
+| `log:view`       |   Ⓞ    |    Ⓞ    |       Ⓞ        |
+| `log:manage`     |   Ⓞ    |    Ⓞ    |       Ⓞ        |
+| `goal:view`      |   Ⓞ    |    Ⓞ    |       Ⓞ        |
+| `goal:manage`    |   Ⓞ    |    Ⓞ    |       Ⓞ        |
+| `reminder:view`  |   Ⓞ    |    Ⓞ    |       Ⓞ        |
+| `reminder:manage`|   Ⓞ    |    Ⓞ    |       Ⓞ        |
+| `user:view`      |   ❌   |   ✅    |       ✅       |
+| `user:manage`    |   ❌   |   ✅    |       ✅       |
+| `rbac:view`      |   ❌   |   ❌    |       ✅       |
+| `rbac:manage`    |   ❌   |   ❌    |       ✅       |
 
-**Số quyền:** `USER` 6 · `ADMIN` 10.
+**Số quyền:** `USER` 6 · `ADMIN` 8 · `SYSTEM_ADMIN` 10.
 
 Đọc bảng này cho đúng:
 
-- **`ADMIN` = `USER` + 4 quyền quản trị.** Không có quyền nào `USER` có mà `ADMIN` không có.
+- **`ADMIN` = `USER` + 2 quyền tài khoản. `SYSTEM_ADMIN` = `ADMIN` + 2 quyền phân quyền.**
+  Không có quyền nào vai trò dưới có mà vai trò trên không có.
 - **Sáu dòng đầu là Ⓞ ở cả hai cột — đây là điểm quan trọng nhất của cả tài liệu.**
   `ADMIN` có `log:view` **không** có nghĩa là đọc được nhật ký của người khác. Nó chỉ có
   nghĩa là `ADMIN` được vào chức năng "xem nhật ký"; hàng nào hiện ra vẫn do ownership quyết
   định, và ownership luôn trả về dữ liệu của chính người đang gọi. Xem §5.
 - **Không có ✅ nào ở sáu dòng đầu, ở bất kỳ vai trò nào.** Nếu một ngày có, đó phải là một
   quyền **mới** (`log:view-any`) kèm log truy cập — không phải nâng Ⓞ thành ✅ tại chỗ.
-- **`ADMIN` không bao giờ bị `403`** ở mọi route trong §7, vì mọi mã quyền mà registry yêu
-  cầu đều nằm trong danh mục 10 mã và `ADMIN` có đủ 10. Đây là bất biến phải giữ khi thêm
-  route: mã quyền mới phải được cấp cho `ADMIN` trong cùng lần sửa.
+- **`SYSTEM_ADMIN` không bao giờ bị `403`** ở mọi route trong §7, vì mọi mã quyền mà registry
+  yêu cầu đều nằm trong danh mục 10 mã và `SYSTEM_ADMIN` có đủ 10. Đây là bất biến phải giữ khi
+  thêm route: mã quyền mới phải được cấp cho `SYSTEM_ADMIN` trong cùng lần sửa. Có test canh
+  (`test/features/rbac/permissionGuard.test.ts`).
 
 ---
 
@@ -563,8 +577,9 @@ quả (upip đạt điều này bằng `NOT EXISTS`; Prisma dùng `upsert` theo 
 Nội dung:
 
 1. **10 quyền** của §3, kèm `resource`, `action`, `sequence`.
-2. **2 vai trò**: `USER` ("Người dùng"), `ADMIN` ("Quản trị hệ thống").
-3. **Ma trận §4**: `USER` ← 6 quyền dữ liệu cá nhân; `ADMIN` ← cả 10.
+2. **3 vai trò**: `USER` ("Người dùng"), `ADMIN` ("Quản trị tài khoản"),
+   `SYSTEM_ADMIN` ("Quản trị hệ thống").
+3. **Ma trận §4**: `USER` ← 6 quyền dữ liệu cá nhân; `ADMIN` ← 8; `SYSTEM_ADMIN` ← cả 10.
 4. `permissionCache.clear()` không cần — seed chạy ở tiến trình riêng, ngoài server.
 
 Seed **chỉ đụng ba bảng RBAC**, không tạo user, không gán vai trò cho ai. Việc gán là bước riêng.
@@ -576,16 +591,17 @@ Hiện DB chỉ có dữ liệu của một người dùng cục bộ, `LOCAL_US
 một hàng `User` mang `id = 'local'` — nếu không, toàn bộ `BodyLog`/`Meal`/`Goal`/`Reminder`
 hiện có sẽ mồ côi.
 
-Backfill: **user `local` nhận vai trò `ADMIN`.** Vì nó là chủ máy, và vì phải có ít nhất một
-`ADMIN` để gán vai trò cho những người sau — nếu không thì thao tác đầu tiên bắt buộc phải
-làm bằng tay trong DB.
+Backfill (đã hiện thực ở `prisma/seed/rbac.seed.ts`): **tài khoản CŨ NHẤT nhận
+`SYSTEM_ADMIN`**, các tài khoản còn lại nhận `USER`. Vì tài khoản đầu là chủ máy, và vì phải
+có ít nhất một `SYSTEM_ADMIN` để gán vai trò cho những người sau — nếu không thì thao tác đầu
+tiên bắt buộc phải làm bằng tay trong DB.
 
-Lưu ý đúng theo §5: `local` là `ADMIN` **không** làm nó đọc được dữ liệu sức khỏe của ai
-khác nếu sau này có người dùng thứ hai. Ownership vẫn chặn.
+Lưu ý đúng theo §5: tài khoản đó là `SYSTEM_ADMIN` **không** làm nó đọc được dữ liệu sức khỏe
+của ai khác. Ownership vẫn chặn ở tầng repository.
 
-Backfill là câu lệnh idempotent: `UPDATE User SET roleId = <id của ADMIN> WHERE roleId IS NULL`
-— chỉ chạm những user chưa có vai trò, chạy lại vô hại. Từ người dùng thứ hai trở đi, mặc
-định là `USER`, do luồng đăng ký của feature `auth` gán.
+Backfill chỉ chạm hàng `roleId IS NULL` nên chạy lại vô hại và không bao giờ hạ vai trò của ai
+đã được gán. Từ người dùng thứ hai trở đi, mặc định là `USER`, do luồng đăng ký của feature
+`auth` gán cứng phía server.
 
 ---
 
@@ -601,21 +617,30 @@ Tương ứng §6 của upip (`RbacAdminController`), thu nhỏ về đúng nh�
 | `PUT` | `/api/roles/:roleId/permissions` | `rbac:manage` | Đặt lại toàn bộ tập quyền của vai trò (thay thế, không cộng dồn) → **evict `roleId`** |
 | `PUT` | `/api/users/:userId/role` | `rbac:manage` | Gán vai trò cho user, body `{ roleId }` → **evict `userId`** |
 
-**Cố tình KHÔNG có:** tạo vai trò, xóa vai trò, tạo quyền. Hai vai trò và mười quyền là danh
+**Cố tình KHÔNG có:** tạo vai trò, xóa vai trò, tạo quyền. Ba vai trò và mười quyền là danh
 mục đóng, sửa bằng seed + review code, không sửa qua UI. upip cần `POST /roles/provision` vì
 nó phục vụ nhiều cơ quan với nhu cầu phát sinh vai trò mới; Lean không có nhu cầu đó, và một
 UI tạo vai trò là một UI để vô tình tạo ra một vai trò có `rbac:manage`.
 
 ### Bất biến bắt buộc
 
-1. **Không được để hệ thống còn 0 `ADMIN`.** `PUT /users/:id/role` hạ `ADMIN` cuối cùng
-   xuống `USER` → `400`, `code: 'VALIDATION_ERROR'`. Không có `ADMIN` nào thì không ai gán
+1. **Không được để hệ thống còn 0 `SYSTEM_ADMIN` hoạt động.** Hạ / khóa / xóa `SYSTEM_ADMIN`
+   cuối cùng → `400`, `code: 'VALIDATION_ERROR'`. Không còn `SYSTEM_ADMIN` nào thì không ai gán
    được vai trò nữa, phải sửa DB bằng tay.
-2. **`ADMIN` không tự hạ vai trò của chính mình.** `req.user.id === :userId` và vai trò mới
-   khác `ADMIN` → `400`. Là ca riêng của (1) nhưng thông báo lỗi cần khác để người dùng hiểu.
-3. **`PUT /roles/:id/permissions` không được gỡ `rbac:manage` khỏi `ADMIN`.** Gỡ xong thì
-   chính API này bị khóa vĩnh viễn.
-4. **Mọi mã quyền mà `permissionRegistry` yêu cầu phải tồn tại trong bảng `Permission`.**
+2. **Không tự đổi vai trò của chính mình.** `req.user.id === :userId` và vai trò mới khác vai
+   trò hiện tại → `400`. Là ca riêng của (1) nhưng thông báo lỗi cần khác để người dùng hiểu.
+3. **Không tự xóa tài khoản của chính mình** → `400`. `onDelete: Cascade` nghĩa là tự xóa mình
+   xóa luôn toàn bộ nhật ký, bữa ăn, mục tiêu của mình.
+4. **`ADMIN` không thao tác được trên tài khoản mang vai trò `SYSTEM_ADMIN`** — sửa, khóa, xóa,
+   reset mật khẩu đều `403`. Thiếu chốt này thì `ADMIN` reset mật khẩu `SYSTEM_ADMIN` rồi đăng
+   nhập vào đó: chiếm hệ thống mà không cần `rbac:manage`. `403` chứ không `404` vì `ADMIN` có
+   `user:view` nên đã thấy tài khoản đó ở màn danh sách.
+5. **`POST`/`PATCH /users` không nhận `roleId`** (Zod `.strict()` → `400`). Vai trò chỉ đổi qua
+   `PUT /users/:id/role`, endpoint duy nhất mang `rbac:manage`.
+6. **`PUT /roles/:id/permissions` không được gỡ `rbac:manage` khỏi `SYSTEM_ADMIN`.** Gỡ xong
+   thì chính API này bị khóa vĩnh viễn. Đây là ngoại lệ DUY NHẤT của "ẩn được bất kỳ chức năng
+   nào" — gỡ `user:manage` khỏi `ADMIN` hay `log:view` khỏi `USER` đều được.
+7. **Mọi mã quyền mà `permissionRegistry` yêu cầu phải tồn tại trong bảng `Permission`.**
    upip ghi cùng bất biến này (§9, ghi chú cuối). Sai là một endpoint không vai trò nào vào
    được. Có test canh (§11).
 

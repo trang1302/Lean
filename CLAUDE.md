@@ -6,11 +6,11 @@ App theo dõi sức khỏe cá nhân, chạy localhost trên một máy, một n
 
 **Không có:** AI phân tích ảnh, lưu ảnh bữa ăn, database món ăn dựng sẵn, truy cập từ điện thoại. Đây là quyết định có chủ đích — xem `docs/overview/00-goals-and-scope.md` để biết lý do trước khi đề xuất thêm lại.
 
-**Đăng nhập/phân quyền:** trước đây nằm trong danh sách trên, **đã đảo quyết định ngày 2026-08-07** theo hướng nhiều người dùng. Spec + plan ở `docs/features/{auth,rbac}/`. **Đăng nhập đã có** (giai đoạn A, Task 1–11: phiên server-side, CSRF, khóa brute-force, cách ly dữ liệu); **phân quyền chưa** (RBAC là giai đoạn B).
+**Đăng nhập/phân quyền:** trước đây nằm trong danh sách trên, **đã đảo quyết định ngày 2026-08-07** theo hướng nhiều người dùng. Spec + plan ở `docs/features/{auth,rbac}/`. **Đăng nhập và phân quyền đều đã có** (giai đoạn A→D). Ba vai trò `USER` / `ADMIN` / `SYSTEM_ADMIN`, mười quyền `resource:action`.
 
-**Trạng thái:** backend + web đã chạy. Auth giai đoạn A xong trọn Task 1–11 (đăng ký,
-đăng nhập, phiên server-side, `requireAuth`, CSRF, cách ly dữ liệu theo người dùng,
-chống brute-force, một-phiên-một-tài-khoản); RBAC (giai đoạn B, cột `role`) chưa bắt đầu.
+**Trạng thái:** backend + web đã chạy. Auth + RBAC **xong trọn giai đoạn A→D**: đăng ký,
+đăng nhập, phiên server-side, CSRF, chống brute-force, cách ly dữ liệu theo người dùng,
+3 vai trò + 10 quyền, API quản trị tài khoản/phân quyền, và hai khối quản trị trên web.
 
 ## Tech Stack
 
@@ -50,13 +50,14 @@ Lean/
 │   │   │   ├── clients/ntfy.client.ts
 │   │   │   ├── errors/  validation/
 │   │   │   ├── security/{password,csrf}.ts
-│   │   └── features/<feature>/           # auth bodyLogs meals goal summary reminders
+│   │   │   ├── rbac/{permissionRegistry,permissionGuard,permissionCache}.ts
+│   │   └── features/<feature>/           # auth rbac users bodyLogs meals goal summary reminders
 │   │       ├── controllers/  services/  repositories/  dtos/
 │   │       └── index.ts                  # export router
 │   └── test/                             # soi gương cây src/
 └── web/src/
     ├── components/{ui,shared}/  lib/  router/
-    └── features/{auth,today,charts,settings}/{api,components,hooks}/
+    └── features/{auth,admin,today,charts,settings}/{api,components,hooks}/
 ```
 
 **Mọi CRUD đi đủ 4 lớp** controller → service → repository → Prisma, kể cả khi service chỉ chuyển tiếp. Nhất quán quan trọng hơn việc tiết kiệm vài file.
@@ -126,6 +127,11 @@ Ví dụ: feat(stats): add 7-day moving average for weight
 - **Nhắc nhở chỉ chạy khi server bật.** Máy tắt thì không có nhắc và không gửi bù. Phải ghi rõ điều này trên giao diện Cài đặt.
 - **CSRF token buộc vào `req.session.userId`, không phải `req.sessionID`.** Bảng `Session` có `userId` NOT NULL + khóa ngoại nên phiên vô danh KHÔNG ghi được, khiến `sessionID` đổi mỗi request khi chưa đăng nhập. Hệ quả phải nhớ: **token lấy trước khi đăng nhập hết hiệu lực ngay sau khi đăng nhập** — client phải gọi lại `GET /api/auth/csrf` sau mỗi lần login/logout (web đã làm ở `features/auth/api/auth.api.ts`). Quên bước này là 403 CSRF_ERROR ở mọi thao tác ghi.
 - **`requireAuth` mắc MỘT lần ở `app.ts`**, không rải vào từng feature. Router thêm mới ở DƯỚI dòng đó được bảo vệ sẵn; thêm ở TRÊN là mở công khai. `test/features/auth/middleware.test.ts` canh đúng ranh giới này.
+- **Thêm route mới thì PHẢI khai vào `shared/rbac/permissionRegistry.ts`.** Mặc định là TỪ CHỐI: route không khai trả `403`. Đó là chủ đích — quên khai thành lỗi ồn ào ngay lần test đầu thay vì một route dữ liệu sức khỏe im lặng không được bảo vệ. Thứ tự các dòng là **một phần của đặc tả**: dòng hẹp trước dòng rộng, và `/users/*/role` PHẢI đứng trước `/users/*`.
+- **RBAC gác CHỨC NĂNG, ownership gác HÀNG DỮ LIỆU — hai lớp trực giao, cần cả hai.** `SYSTEM_ADMIN` có `log:view` KHÔNG đọc được nhật ký của người khác: mọi truy vấn vẫn mang `userId`. Ba mã trạng thái, ba chủ thể quyết định: `401` chưa đăng nhập (requireAuth) · `403` thiếu quyền (permissionGuard) · `404` hàng của người khác (repository).
+- **KHÔNG viết `if (user.role === 'ADMIN')` ở controller hay service.** Quyết định cho/chặn nằm ở đúng một file. Bất biến trên HÀNG ĐÍCH (vd. `ADMIN` không đụng được tài khoản `SYSTEM_ADMIN`) thì ở service, và phân biệt bằng **mã quyền** (`rbac:manage`), không bằng tên vai trò.
+- **Đổi vai trò hay sửa ma trận quyền PHẢI gọi evict cache.** Quyền cache theo `userId`, TTL 30 phút. `evictRole` phải tra ngược ra mọi user mang vai trò đó — đây là chỗ dễ quên nhất. Dựa vào TTL để một thay đổi có hiệu lực nghĩa là đang thiếu một lời gọi evict.
+- **Cache quyền chỉ đúng với MỘT tiến trình server.** Nhiều instance là sai theo kiểu im lặng và cho kết quả không xác định — đổi sang Redis trước khi scale ngang.
 - **Khóa đăng nhập đếm theo CẢ email lẫn IP** (5 lần thất bại / 15 phút, hằng ở đầu `auth.service.ts`). Ngưỡng được kiểm TRƯỚC Argon2 và trước cả `findUserByEmail`: trước Argon2 vì verify tốn CPU có chủ đích (để kẻ tấn công gọi vô hạn là biến chống-brute-force thành lỗ DoS), trước `findUserByEmail` vì chỉ khóa email có thật sẽ biến chính mã 429 thành oracle đoán tài khoản. Lần thử BỊ CHẶN không được ghi lại — ghi là cửa sổ tự gia hạn vô tận.
 - **`trust proxy` chỉ bật ở production.** Bật nhầm khi không có proxy là để client tự khai IP qua `X-Forwarded-For` và né bộ đếm; không bật khi có proxy là khóa nhầm toàn bộ người dùng.
 - **Một tài khoản, một phiên.** Đăng nhập ở nơi thứ hai đá phiên thứ nhất (`revokeOtherSessions`, chạy SAU `regenerate` + `save` — chạy trước là tự xóa phiên vừa tạo).

@@ -37,7 +37,23 @@ vi.mock('../features/auth/api/auth.api', () => ({
 import * as authApi from '../features/auth/api/auth.api';
 
 const SESSION: SessionResponse = {
-  user: { id: 'u1', email: 'user@lean.local', displayName: null, status: 'active' },
+  user: {
+    id: 'u1',
+    email: 'user@lean.local',
+    displayName: null,
+    status: 'active',
+    role: { id: 'r1', code: 'USER', name: 'Người dùng' },
+  },
+  // Sáu quyền dữ liệu của vai trò USER — đủ để ba trang dữ liệu render, và
+  // KHÔNG có quyền quản trị, nên các mục quản trị phải vắng mặt.
+  permissions: [
+    'log:view',
+    'log:manage',
+    'goal:view',
+    'goal:manage',
+    'reminder:view',
+    'reminder:manage',
+  ],
   expiresAt: null,
 };
 

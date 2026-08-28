@@ -6,11 +6,15 @@
 // nhân bản logic. Đọc một giá trị để điền sẵn ô nhập KHÔNG phải nhân bản
 // công thức — xem SPEC §2 để phân biệt hai việc này.
 import { Card } from '../../../components/ui';
+import { PermissionsSection, UsersSection } from '../../admin';
+import { useSession } from '../../auth';
 import { GoalSettingsSection } from './GoalSettingsSection';
 import { ReminderSettingsSection } from './ReminderSettingsSection';
 import s from './SettingsPage.module.css';
 
 export function SettingsPage() {
+  const { hasPermission } = useSession();
+
   return (
     <div className={s.page}>
       <h1 className={s.heading}>Cài đặt</h1>
@@ -22,6 +26,22 @@ export function SettingsPage() {
       <Card heading="Nhắc nhở">
         <ReminderSettingsSection />
       </Card>
+
+      {/* Hai khối quản trị: ẨN HẲN khi thiếu quyền, không render dạng xám.
+          Gate bằng MÃ QUYỀN, không bằng `user.role.code` — sửa ma trận ở màn
+          Phân quyền phải có hiệu lực ngay ở đây mà không phải sửa code.
+          Và đây không phải bảo mật: server chặn bằng `permissionGuard`. */}
+      {hasPermission('user:view') ? (
+        <Card heading="Tài khoản">
+          <UsersSection />
+        </Card>
+      ) : null}
+
+      {hasPermission('rbac:view') ? (
+        <Card heading="Phân quyền">
+          <PermissionsSection />
+        </Card>
+      ) : null}
     </div>
   );
 }

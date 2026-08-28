@@ -1,6 +1,16 @@
 # Feature `rbac` — Kế hoạch & trạng thái
 
-## 1. Trạng thái: **CHƯA BẮT ĐẦU**
+## 1. Trạng thái: **XONG** (2026-08-28)
+
+Giai đoạn B (registry, guard, cache, seed) và C (API quản trị `users` + `rbac`) đã có code và
+test. Giai đoạn D (FE) cũng xong: `hasPermission`, khối **Tài khoản** và **Phân quyền** trong
+trang Cài đặt.
+
+Ba vai trò chứ không phải hai — xem banner đầu [`SPEC.md`](SPEC.md).
+
+Verify: `cd server && npm test` (24 file, 429 test) · `cd web && npm test` (45 file, 301 test).
+
+### Trạng thái cũ (giữ để đối chiếu)
 
 Chưa có dòng code nào. [`SPEC.md`](SPEC.md) là tài liệu định hướng, không mô tả code đang
 chạy — khác với `SPEC.md` của 5 feature đã xong (`body-logs`, `meals`, `goal`, `summary`,

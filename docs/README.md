@@ -13,7 +13,7 @@
 | Quy ước bắt buộc, hình dạng lỗi, phiên bản thư viện | `overview/04-conventions.md` |
 | Muốn thêm AI ước tính calo từ ảnh thì gắn vào đâu? | `overview/05-future-ai.md` |
 | Đăng nhập và phiên hoạt động ra sao? | `features/auth/SPEC.md` |
-| Vai trò và quyền chia thế nào? (kế hoạch, chưa code) | `features/rbac/SPEC.md` |
+| Vai trò và quyền chia thế nào? | `features/rbac/SPEC.md` |
 | Vì sao trước đây cố tình không có đăng nhập, và vì sao đổi? | `overview/00-goals-and-scope.md` |
 | Còn gì chưa chốt, cái nào là bug cần sửa? | `overview/06-open-questions.md` |
 | Một endpoint cụ thể hành xử thế nào? | `features/<tên>/SPEC.md` |
@@ -53,7 +53,7 @@ sẽ "sửa cho hợp lý" và làm hỏng thứ đang đúng.
 | `web-shell` | đã có code — router, layout, `apiClient`, các trạng thái dùng chung |
 | `web-today` `web-charts` `web-settings` | đã có code, 261 test pass |
 | `auth` | **giai đoạn A xong trọn Task 1–11** — đăng ký/đăng nhập/phiên, `requireAuth`, CSRF, helmet, cách ly dữ liệu, chống brute-force, một-phiên-một-tài-khoản |
-| `rbac` | **chưa implement** — mới có SPEC + PLAN |
+| `rbac` | **xong** — 3 vai trò, 10 quyền, `permissionGuard`, API quản trị, hai khối quản trị trên web |
 
 Đợt **`measures-and-goals`** (2026-08-11) đã xong: thêm 3 số đo cơ thể (`chestCm`,
 `shoulderCm`, `armCm`) và 6 trường mục tiêu (`startWeightKg`, `startDate`, 4 target vòng),
@@ -79,8 +79,16 @@ Hai lưới an toàn quan trọng nhất: `test/features/userIsolation.test.ts` 
 hai người dùng) và `test/features/auth/middleware.test.ts` (không route dữ liệu nào lọt ra ngoài
 `requireAuth`).
 
-**Còn nợ:** `rbac` (giai đoạn B, cột `role`) chưa có dòng code nào; giai đoạn C (API quản trị) và
-D (màn Tài khoản / Phân quyền) cũng vậy.
+**Giai đoạn B, C, D cũng đã xong** (2026-08-28). Ba vai trò `USER` / `ADMIN` / `SYSTEM_ADMIN`
+(design doc đảo `rbac/SPEC.md` §2 có chủ đích), 10 quyền `resource:action`, `permissionGuard`
+cắm một lần ở `/api` với mặc định TỪ CHỐI, API quản trị `/api/users` + `/api/roles` +
+`/api/permissions`, và hai khối **Tài khoản** / **Phân quyền** trong trang Cài đặt.
+
+Bootstrap một máy mới: `npm run seed:rbac` (vai trò + quyền + gán vai trò cho tài khoản đã có)
+rồi `npm run seed:users` nếu muốn ba tài khoản mẫu.
+
+**Còn nợ:** audit log cho thao tác RBAC (ai gán vai trò cho ai, lúc nào) — `rbac/SPEC.md` §12.
+Và cache quyền nằm trong bộ nhớ tiến trình, phải đổi sang Redis trước khi chạy nhiều instance.
 
 **Đợt `measures-and-goals` (2026-08-11): xong.** Thêm ba số đo cơ thể (`chestCm`,
 `shoulderCm`, `armCm`) vào `BodyLog` và sáu trường mục tiêu (điểm xuất phát + bốn đích vòng

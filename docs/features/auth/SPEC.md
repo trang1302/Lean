@@ -265,7 +265,7 @@ cách duy nhất khiến việc thêm một cột nhạy cảm vào `User` sau n
 ```jsonc
 {
   "email": "toi@vidu.com",     // z.email(), trim + lowercase trước khi tra
-  "password": "…"              // string, 8…200 ký tự
+  "password": "…"              // string, 1…200 ký tự — min-8 thuộc đường ĐẶT mật khẩu, không thuộc đường đăng nhập
 }
 ```
 
@@ -659,7 +659,7 @@ không phải bị bỏ sót.
 | **Đăng nhập mạng xã hội** (Google, …) | Phụ thuộc §8.1 — cần luồng OAuth2 client trước. upip có `AuthProvider` trong entity `User` cho việc này | Sau khi có OAuth2 client |
 | **2FA / TOTP** | Cần bảng thiết bị, mã dự phòng, luồng khôi phục — một feature riêng, không phải phần thêm của đăng nhập | Chốt riêng |
 | **Quên mật khẩu qua email** | Cần hạ tầng gửi email (SMTP/provider) mà Lean chưa có gì. upip có `ForgotPasswordController` + `ConfirmTokenRepository` làm tham chiếu khi tới lúc | Có kênh email |
-| **Đăng ký tự phục vụ** (`POST /auth/register`) | Giai đoạn 1 tạo user bằng script seed ([`PLAN.md`](PLAN.md) §Bước 3). Đăng ký mở kéo theo xác thực email, chống spam, điều khoản sử dụng | Câu hỏi mở §9 |
+| ~~**Đăng ký tự phục vụ**~~ — ĐÃ LÀM | Quyết định 5 của design doc 2026-08-10 đảo mục này: `POST /api/auth/register` mở công khai, vai trò `USER` gán cứng phía server. Xác thực email và chống spam vẫn là nợ — xem design doc §7 |
 | **Phân quyền / vai trò** | Thuộc `docs/features/rbac/`, đang được viết song song. `auth` trả lời *"ai đang gọi"*; `rbac` trả lời *"người đó được làm gì"* | Ngay sau `auth` |
 | **Redis cho phiên** | Chỉ cần khi chạy nhiều instance | Scale ngang |
 | **JWT nội bộ + claim `authorities`** | Không có ranh giới service nào để token đi qua (§2) | Tách microservice |

@@ -1,0 +1,87 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]: Lean
+    - navigation [ref=e5]:
+      - link "Hôm nay" [ref=e6] [cursor=pointer]:
+        - /url: "#"
+      - link "Biểu đồ" [ref=e7] [cursor=pointer]:
+        - /url: "#"
+      - link "Cài đặt" [ref=e8] [cursor=pointer]:
+        - /url: "#"
+    - generic [ref=e9]:
+      - generic [ref=e10]: alex@example.com
+      - button "Đăng xuất" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - heading "Hôm nay" [level=1] [ref=e14]
+      - generic [ref=e15]:
+        - generic [ref=e16]: Ngày
+        - generic [ref=e17]: 28/08/2026
+      - generic [ref=e22]:
+        - heading "Số đo" [level=2] [ref=e23]
+        - generic [ref=e25]:
+          - generic [ref=e26]: Cân nặng (kg)
+          - generic [ref=e27]: "72.4"
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30]: Vòng bụng (cm)
+            - generic [ref=e31]: "84.5"
+          - generic [ref=e32]:
+            - generic [ref=e33]: Vòng ngực (cm)
+            - generic [ref=e34]: "98"
+          - generic [ref=e35]:
+            - generic [ref=e36]: Vòng vai (cm)
+            - generic [ref=e37]: "112"
+          - generic [ref=e38]:
+            - generic [ref=e39]: Vòng bắp tay (cm)
+            - generic [ref=e40]: "32.5"
+        - generic [ref=e41]:
+          - button "Lưu số đo" [ref=e42] [cursor=pointer]
+          - generic [ref=e43]: Có thay đổi chưa lưu.
+      - generic [ref=e44]:
+        - heading "Bữa ăn" [level=2] [ref=e45]
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - heading "Sáng" [level=3] [ref=e48]
+            - generic [ref=e49]:
+              - generic [ref=e50]: Oatmeal with banana
+              - generic [ref=e51]: "320"
+              - generic [ref=e52]:
+                - button "Sửa" [ref=e53] [cursor=pointer]
+                - button "Xóa" [ref=e54] [cursor=pointer]
+            - generic [ref=e55]:
+              - generic [ref=e56]: Black coffee
+              - generic [ref=e57]: "5"
+              - generic [ref=e58]:
+                - button "Sửa" [ref=e59] [cursor=pointer]
+                - button "Xóa" [ref=e60] [cursor=pointer]
+          - generic [ref=e61]:
+            - heading "Trưa" [level=3] [ref=e62]
+            - generic [ref=e63]:
+              - generic [ref=e64]: Grilled chicken salad
+              - generic [ref=e65]: "480"
+              - generic [ref=e66]:
+                - button "Sửa" [ref=e67] [cursor=pointer]
+                - button "Xóa" [ref=e68] [cursor=pointer]
+          - generic [ref=e69]:
+            - heading "Tối" [level=3] [ref=e70]
+            - generic [ref=e71]:
+              - generic [ref=e72]: Salmon with brown rice
+              - generic [ref=e73]: "610"
+              - generic [ref=e74]:
+                - button "Sửa" [ref=e75] [cursor=pointer]
+                - button "Xóa" [ref=e76] [cursor=pointer]
+          - generic [ref=e77]:
+            - heading "Phụ" [level=3] [ref=e78]
+            - paragraph [ref=e79]: —
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - generic [ref=e82]: Buổi
+            - generic [ref=e83]: Sáng
+          - generic [ref=e87]: Tên món
+          - generic [ref=e90]: Calo
+          - button "+" [ref=e93] [cursor=pointer]
+      - generic [ref=e94]:
+        - heading "Tổng calo" [level=2] [ref=e95]
+        - paragraph [ref=e96]: 1415 / 1800
+        - paragraph [ref=e99]: 79%

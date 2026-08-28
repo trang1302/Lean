@@ -12,10 +12,23 @@ import type { SessionUser } from '../../../types/api';
  */
 interface SessionState {
   user: SessionUser | null;
+  /** Mã quyền của phiên. Rỗng khi chưa đăng nhập hoặc chưa được cấp vai trò. */
+  permissions: string[];
   loading: boolean;
 }
 
 interface SessionContextValue extends SessionState {
+  /**
+   * Gate màn hình bằng MÃ QUYỀN, không bằng `user.role.code`.
+   *
+   * Gate theo role code là nhân bản ma trận quyền ra FE; sửa ma trận ở màn
+   * Phân quyền xong thì FE vẫn hiện/ẩn theo bản cũ. `permissions` đến thẳng từ
+   * server nên nó không bao giờ lệch.
+   *
+   * Và ẩn nút KHÔNG phải bảo mật — server vẫn chặn bằng `permissionGuard`.
+   * Hàm này chỉ để không bày ra thứ bấm vào sẽ 403.
+   */
+  hasPermission: (code: string) => boolean;
   /** Đăng nhập rồi nạp user vào context. Ném `ApiError` để form hiện lỗi. */
   signIn: (email: string, password: string) => Promise<void>;
   /**
@@ -30,7 +43,11 @@ interface SessionContextValue extends SessionState {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>({ user: null, loading: true });
+  const [state, setState] = useState<SessionState>({
+    user: null,
+    permissions: [],
+    loading: true,
+  });
 
   const refresh = useCallback(async () => {
     // Lấy CSRF token TRƯỚC khi hỏi phiên: ba trang dữ liệu nằm sau
@@ -39,7 +56,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // đầu tiên sau mỗi lần tải trang.
     await authApi.refreshCsrfToken();
     const session = await authApi.getSession();
-    setState({ user: session?.user ?? null, loading: false });
+    setState({
+      user: session?.user ?? null,
+      permissions: session?.permissions ?? [],
+      loading: false,
+    });
   }, []);
 
   // Nạp phiên một lần khi app khởi động. `void` vì `useEffect` không nhận
@@ -47,13 +68,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // chưa đăng nhập, người dùng thấy trang đăng nhập và biết đường thử lại.
   useEffect(() => {
     void refresh().catch(() => {
-      setState({ user: null, loading: false });
+      setState({ user: null, permissions: [], loading: false });
     });
   }, [refresh]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const session = await authApi.login({ email, password });
-    setState({ user: session.user, loading: false });
+    setState({ user: session.user, permissions: session.permissions, loading: false });
   }, []);
 
   const signOut = useCallback(async () => {
@@ -73,13 +94,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Vẫn log để lỗi không biến mất hoàn toàn.
       console.warn('Đăng xuất phía server thất bại, vẫn xóa phiên phía client:', err);
     } finally {
-      setState({ user: null, loading: false });
+      setState({ user: null, permissions: [], loading: false });
     }
   }, []);
 
+  const hasPermission = useCallback(
+    (code: string) => state.permissions.includes(code),
+    [state.permissions],
+  );
+
   const value = useMemo<SessionContextValue>(
-    () => ({ ...state, signIn, signOut, refresh }),
-    [state, signIn, signOut, refresh],
+    () => ({ ...state, hasPermission, signIn, signOut, refresh }),
+    [state, hasPermission, signIn, signOut, refresh],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

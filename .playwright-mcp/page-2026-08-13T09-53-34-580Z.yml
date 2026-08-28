@@ -1,0 +1,15 @@
+- generic [ref=f1e94]:
+  - paragraph [ref=f1e95]: Lean
+  - heading "Đăng nhập" [level=1] [ref=f1e96]
+  - generic [ref=f1e97]:
+    - generic [ref=f1e98]:
+      - generic [ref=f1e99]: Email
+      - textbox "Email" [active] [ref=f1e100]
+    - generic [ref=f1e101]:
+      - generic [ref=f1e102]: Mật khẩu
+      - textbox "Mật khẩu" [ref=f1e103]
+  - button "Đăng nhập" [ref=f1e105] [cursor=pointer]
+  - paragraph [ref=f1e106]:
+    - text: Chưa có tài khoản?
+    - link "Đăng ký" [ref=f1e107] [cursor=pointer]:
+      - /url: /register

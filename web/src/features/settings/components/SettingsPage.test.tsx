@@ -6,6 +6,33 @@ import { ApiError } from '../../../types/api';
 import { SettingsPage } from './SettingsPage';
 import type { ReminderView } from '../api/settings.types';
 
+// Trang này giờ đọc quyền để quyết định có render hai khối quản trị hay không.
+// Mock ở tầng `useSession` (không dựng `SessionProvider` thật) để suite vẫn nói
+// về Mục tiêu và Nhắc nhở — hai khối quản trị có suite riêng.
+//
+// Mặc định là một người dùng thường: 6 quyền dữ liệu, không có `user:view` hay
+// `rbac:view`. Nhờ vậy mọi test cũ ở đây thấy đúng trang mà chúng vốn kiểm.
+const permissions = new Set<string>([
+  'log:view',
+  'log:manage',
+  'goal:view',
+  'goal:manage',
+  'reminder:view',
+  'reminder:manage',
+]);
+
+vi.mock('../../auth', () => ({
+  useSession: () => ({
+    user: { id: 'u1', email: 'user@lean.local', displayName: null, status: 'active', role: null },
+    permissions: [...permissions],
+    loading: false,
+    hasPermission: (code: string) => permissions.has(code),
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 const EMPTY_GOAL = {
   startWeightKg: null,
   startDate: null,

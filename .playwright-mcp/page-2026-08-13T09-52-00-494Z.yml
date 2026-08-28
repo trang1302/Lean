@@ -1,0 +1,19 @@
+- generic [ref=f1e20]:
+  - paragraph [ref=f1e21]: Lean
+  - heading "Đăng ký" [level=1] [ref=f1e22]
+  - generic [ref=f1e23]:
+    - generic [ref=f1e24]:
+      - generic [ref=f1e25]: Email
+      - textbox "Email" [ref=f1e26]: demo@lean.local
+    - generic [ref=f1e27]:
+      - generic [ref=f1e28]: Tên hiển thị (không bắt buộc)
+      - textbox "Tên hiển thị (không bắt buộc)" [ref=f1e29]: Demo User
+    - generic [ref=f1e30]:
+      - generic [ref=f1e31]: Mật khẩu
+      - textbox "Mật khẩu" [active] [ref=f1e32]: "123456"
+  - paragraph [ref=f1e33]: Mật khẩu tối thiểu 8 ký tự.
+  - button "Tạo tài khoản" [ref=f1e35] [cursor=pointer]
+  - paragraph [ref=f1e36]:
+    - text: Đã có tài khoản?
+    - link "Đăng nhập" [ref=f1e37] [cursor=pointer]:
+      - /url: /login

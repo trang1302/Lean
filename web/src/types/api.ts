@@ -12,16 +12,62 @@
  * minh qua `toPublicUser` nên một cột nhạy cảm thêm vào bảng `User` không tự
  * rò ra đây. Đừng thêm trường vào interface này chỉ vì đoán server có.
  */
+export interface UserRole {
+  id: string;
+  code: string; // "USER" | "ADMIN" | "SYSTEM_ADMIN"
+  name: string;
+}
+
 export interface SessionUser {
   id: string;
   email: string;
   displayName: string | null;
   status: string; // "active" | "disabled" — ràng buộc giá trị nằm ở Zod phía server
+  role: UserRole | null; // null = chưa được cấp vai trò → tập quyền rỗng
 }
 
 export interface SessionResponse {
   user: SessionUser;
+  /**
+   * Mã quyền của phiên hiện tại, vd `["log:view", "goal:manage"]`.
+   *
+   * FE gate màn hình bằng ĐÂY, KHÔNG bằng `user.role.code`. Gate theo role code
+   * là nhân bản ma trận quyền ra FE, và hai bản lệch nhau ngay lần đầu ai đó
+   * sửa ma trận ở màn Phân quyền.
+   */
+  permissions: string[];
   expiresAt: string | null; // ISO 8601
+}
+
+// ---------------------------------------------------------------------------
+// Quản trị — docs/features/rbac/SPEC.md §10
+// ---------------------------------------------------------------------------
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  status: string;
+  role: UserRole | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface Permission {
+  id: string;
+  code: string;
+  name: string;
+  resource: string;
+  action: string;
+  sequence: number;
+}
+
+export interface Role {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  userCount: number;
 }
 
 // ---------------------------------------------------------------------------
