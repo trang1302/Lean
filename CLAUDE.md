@@ -6,9 +6,11 @@ App theo dõi sức khỏe cá nhân, chạy localhost trên một máy, một n
 
 **Không có:** AI phân tích ảnh, lưu ảnh bữa ăn, database món ăn dựng sẵn, truy cập từ điện thoại. Đây là quyết định có chủ đích — xem `docs/overview/00-goals-and-scope.md` để biết lý do trước khi đề xuất thêm lại.
 
-**Đăng nhập/phân quyền:** trước đây nằm trong danh sách trên, **đã đảo quyết định ngày 2026-08-07** theo hướng nhiều người dùng. Đã có spec + plan ở `docs/features/{auth,rbac}/`, **chưa có dòng code nào**. Tới khi làm xong: chỉ chạy localhost.
+**Đăng nhập/phân quyền:** trước đây nằm trong danh sách trên, **đã đảo quyết định ngày 2026-08-07** theo hướng nhiều người dùng. Spec + plan ở `docs/features/{auth,rbac}/`. **Đăng nhập đã có** (giai đoạn A, Task 1–11: phiên server-side, CSRF, khóa brute-force, cách ly dữ liệu); **phân quyền chưa** (RBAC là giai đoạn B).
 
-**Trạng thái:** mới có spec, chưa có code.
+**Trạng thái:** backend + web đã chạy. Auth giai đoạn A xong trọn Task 1–11 (đăng ký,
+đăng nhập, phiên server-side, `requireAuth`, CSRF, cách ly dữ liệu theo người dùng,
+chống brute-force, một-phiên-một-tài-khoản); RBAC (giai đoạn B, cột `role`) chưa bắt đầu.
 
 ## Tech Stack
 
@@ -44,22 +46,24 @@ Lean/
 │   │   ├── generated/prisma/             # máy sinh, gitignore
 │   │   ├── lib/{db,time}.ts
 │   │   ├── shared/
-│   │   │   ├── constants.ts              # LOCAL_USER_ID
 │   │   │   ├── stats/{movingAverage,rate,weekly}.ts   # HÀM THUẦN
 │   │   │   ├── clients/ntfy.client.ts
 │   │   │   ├── errors/  validation/
-│   │   └── features/<feature>/           # bodyLogs meals goal summary reminders
+│   │   │   ├── security/{password,csrf}.ts
+│   │   └── features/<feature>/           # auth bodyLogs meals goal summary reminders
 │   │       ├── controllers/  services/  repositories/  dtos/
 │   │       └── index.ts                  # export router
 │   └── test/                             # soi gương cây src/
 └── web/src/
     ├── components/{ui,shared}/  lib/  router/
-    └── features/{today,charts,settings}/{api,components,hooks}/
+    └── features/{auth,today,charts,settings}/{api,components,hooks}/
 ```
 
 **Mọi CRUD đi đủ 4 lớp** controller → service → repository → Prisma, kể cả khi service chỉ chuyển tiếp. Nhất quán quan trọng hơn việc tiết kiệm vài file.
 
-**Mọi bảng có `userId`.** Chưa có đăng nhập; dùng hằng `LOCAL_USER_ID` trong `src/shared/constants.ts`. Mọi truy vấn phải mang `userId` kể cả khi chỉ có một người dùng — đó là thứ giữ cho việc thêm auth sau này không phải migrate lại schema.
+**Mọi bảng có `userId`, và nguồn của nó là phiên đăng nhập.** `requireAuth` (mắc MỘT lần ở `app.ts`, trước năm router dữ liệu) gắn `req.user.id`; controller truyền xuống service, service xuống repository. Hằng `LOCAL_USER_ID` và `src/shared/constants.ts` **đã bị xóa** — thấy tên đó ở đâu là tài liệu cũ.
+
+**Mọi truy vấn PHẢI mang `userId`, kể cả khi tra theo khóa chính.** `Meal.id` là cuid toàn cục nên `where: { id }` trần chạm được bản ghi người khác. Chỗ dễ quên nhất là `groupBy` trong `summary.repository.ts`: thiếu `userId` ở đó là gộp calo của mọi người vào một tổng, không ném lỗi, không test feature nào bắt được. `test/features/userIsolation.test.ts` là lưới an toàn cho đúng lớp lỗi này.
 
 ## Key Commands
 
@@ -120,7 +124,11 @@ Ví dụ: feat(stats): add 7-day moving average for weight
 - **MA7 trả `null` khi cửa sổ có dưới 2 giá trị.** Đừng hiển thị một điểm đơn lẻ như thể nó là trung bình.
 - **Trung bình calo tuần bỏ qua ngày không ghi bữa nào.** Tính ngày quên ghi là 0 calo sẽ kéo trung bình xuống sai lệch.
 - **Nhắc nhở chỉ chạy khi server bật.** Máy tắt thì không có nhắc và không gửi bù. Phải ghi rõ điều này trên giao diện Cài đặt.
-- **SQLite + không auth là quyết định có chủ đích** cho bối cảnh localhost một người. Phần "không auth" đã đảo (2026-08-07) — spec ở `docs/features/{auth,rbac}/`, code chưa có. **Cho tới lúc đó, đừng mở ra LAN hay cloud**: không có xác thực nghĩa là ai trong mạng cũng đọc được toàn bộ dữ liệu sức khỏe.
+- **CSRF token buộc vào `req.session.userId`, không phải `req.sessionID`.** Bảng `Session` có `userId` NOT NULL + khóa ngoại nên phiên vô danh KHÔNG ghi được, khiến `sessionID` đổi mỗi request khi chưa đăng nhập. Hệ quả phải nhớ: **token lấy trước khi đăng nhập hết hiệu lực ngay sau khi đăng nhập** — client phải gọi lại `GET /api/auth/csrf` sau mỗi lần login/logout (web đã làm ở `features/auth/api/auth.api.ts`). Quên bước này là 403 CSRF_ERROR ở mọi thao tác ghi.
+- **`requireAuth` mắc MỘT lần ở `app.ts`**, không rải vào từng feature. Router thêm mới ở DƯỚI dòng đó được bảo vệ sẵn; thêm ở TRÊN là mở công khai. `test/features/auth/middleware.test.ts` canh đúng ranh giới này.
+- **Khóa đăng nhập đếm theo CẢ email lẫn IP** (5 lần thất bại / 15 phút, hằng ở đầu `auth.service.ts`). Ngưỡng được kiểm TRƯỚC Argon2 và trước cả `findUserByEmail`: trước Argon2 vì verify tốn CPU có chủ đích (để kẻ tấn công gọi vô hạn là biến chống-brute-force thành lỗ DoS), trước `findUserByEmail` vì chỉ khóa email có thật sẽ biến chính mã 429 thành oracle đoán tài khoản. Lần thử BỊ CHẶN không được ghi lại — ghi là cửa sổ tự gia hạn vô tận.
+- **`trust proxy` chỉ bật ở production.** Bật nhầm khi không có proxy là để client tự khai IP qua `X-Forwarded-For` và né bộ đếm; không bật khi có proxy là khóa nhầm toàn bộ người dùng.
+- **Một tài khoản, một phiên.** Đăng nhập ở nơi thứ hai đá phiên thứ nhất (`revokeOtherSessions`, chạy SAU `regenerate` + `save` — chạy trước là tự xóa phiên vừa tạo).
 
 ## Tham chiếu
 

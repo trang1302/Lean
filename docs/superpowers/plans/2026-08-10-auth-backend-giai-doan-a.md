@@ -1544,7 +1544,7 @@ Task 6. Không để `it.skip` không giải thích.
 > `helmet` → `express.json` → `session` → csrf → `/api/health` → `/api/auth/*` → `requireAuth`
 > → 5 router dữ liệu → `notFoundHandler` → `errorHandler`.
 
-- [ ] **Step 1: Viết test thất bại**
+- [x] **Step 1: Viết test thất bại**
 
 ```ts
 // server/test/features/auth/middleware.test.ts
@@ -1637,12 +1637,12 @@ describe('CSRF', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận đỏ**
+- [x] **Step 2: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/features/auth/middleware.test.ts`
 Expected: FAIL — `/api/goal` trả 200 thay vì 401; `/api/auth/csrf` trả 404.
 
-- [ ] **Step 3: Thêm `GET /csrf` vào controller**
+- [x] **Step 3: Thêm `GET /csrf` vào controller**
 
 > **Không bịa chữ ký `csrf-csrf`.** API của nó đã đổi tên giữa các major version. Hàm khởi tạo
 > nhận một object cấu hình (trong đó có cách lấy secret và cách lấy định danh phiên) và trả về
@@ -1699,7 +1699,7 @@ export { doubleCsrfProtection as csrfProtection, generateCsrfToken };
 `csrf-csrf` cần đọc/ghi cookie riêng của nó nên **phải có `cookie-parser`** mắc trước nó (hoặc
 bản đang cài tự xử lý — kiểm README). Nếu thiếu, mọi request ghi trả `403` kể cả khi token đúng.
 
-- [ ] **Step 4: Mắc đủ chuỗi middleware trong `app.ts`**
+- [x] **Step 4: Mắc đủ chuỗi middleware trong `app.ts`**
 
 ```ts
 /**
@@ -1768,7 +1768,7 @@ export function createApp(): express.Express {
 }
 ```
 
-- [ ] **Step 5: Mắc tác vụ dọn phiên hết hạn**
+- [x] **Step 5: Mắc tác vụ dọn phiên hết hạn**
 
 Bảng `Session` phình vô hạn nếu không dọn — hàng chết không bao giờ bị đọc lại để phát hiện.
 
@@ -1790,12 +1790,12 @@ pruneTimer.unref();
 Trong `shutdown()` (`server.ts:20-24`) thêm `clearInterval(pruneTimer)` trước
 `stopReminderScheduler()`.
 
-- [ ] **Step 6: Chạy test, xác nhận xanh**
+- [x] **Step 6: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/features/auth/middleware.test.ts`
 Expected: PASS — 10 test.
 
-- [ ] **Step 7: `npm test` — kỳ vọng ĐỎ và đó là đúng**
+- [x] **Step 7: `npm test` — kỳ vọng ĐỎ và đó là đúng**
 
 ```bash
 npm test
@@ -1806,7 +1806,7 @@ Expected: 208 test cũ **đỏ hàng loạt** với `401 UNAUTHORIZED` — chún
 **Không** gỡ `requireAuth` để test xanh lại. Ghi rõ trong bàn giao rằng test đang đỏ có chủ đích,
 kèm số lượng.
 
-- [ ] **Step 8: Bàn giao**
+- [x] **Step 8: Bàn giao**
 
 Đề xuất: `feat(auth): wire helmet, session, csrf and requireAuth into app`
 
@@ -1828,7 +1828,7 @@ kèm số lượng.
 Hai feature này làm đúng ngay từ đầu: repository của chúng **đã** nhận `userId` làm tham số, hằng
 chỉ xuất hiện ở service. **Không chạm repository** (`docs/features/meals/SPEC.md:239`).
 
-- [ ] **Step 1: Sửa `goal.service.ts` — bỏ import hằng, nhận tham số**
+- [x] **Step 1: Sửa `goal.service.ts` — bỏ import hằng, nhận tham số**
 
 ```ts
 // server/src/features/goal/services/goal.service.ts
@@ -1846,7 +1846,7 @@ export async function upsertGoal(userId: string, patch: GoalPatch): Promise<Goal
 }
 ```
 
-- [ ] **Step 2: Sửa `goal.controller.ts` — lấy `userId` từ `req.user`**
+- [x] **Step 2: Sửa `goal.controller.ts` — lấy `userId` từ `req.user`**
 
 Controller là lớp duy nhất biết `req`. Service **không** đọc `req` — giữ ranh giới
 `docs/overview/01-architecture.md:71-76`.
@@ -1866,7 +1866,7 @@ goalController.put('/', async (req: Request, res: Response) => {
 khó chịu: thêm một hàm `currentUserId(req): string` trong `shared/` ném `AppError.unauthorized()`
 khi thiếu — nhưng **đừng** để service tự đọc `req` để tránh dấu `!`.
 
-- [ ] **Step 3: Sửa `meals.service.ts`**
+- [x] **Step 3: Sửa `meals.service.ts`**
 
 Xóa hàm `currentUserId()` ở `:12` và import hằng ở `:1`. Mọi hàm export nhận `userId: string` làm
 tham số **đầu tiên**, truyền thẳng xuống repository (repository đã nhận sẵn `userId` — **không
@@ -1909,14 +1909,14 @@ Controller truyền `req.user!.id` làm đối số đầu tiên cho cả bốn 
 `updateMany`/`deleteMany` với `where: { id, userId }` chính là lớp cách ly hàng, và nó là lớp
 quan trọng hơn RBAC (`rbac/SPEC.md:188`).
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 ```bash
 npx tsc --noEmit
 ```
 Expected: sạch. Nếu còn lỗi ở `test/`, để nguyên — Task 10 xử lý test.
 
-- [ ] **Step 5: Bàn giao**
+- [x] **Step 5: Bàn giao**
 
 Đề xuất: hai commit — `refactor(goal): take userId from session` và
 `refactor(meals): take userId from session`
@@ -1946,7 +1946,7 @@ Expected: sạch. Nếu còn lỗi ở `test/`, để nguyên — Task 10 xử l
 > feature này nó là **đổi chữ ký hàm ở tầng repository và sửa mọi lời gọi ở tầng service**
 > (`auth/SPEC.md:457`). Vẫn cơ học, nhưng không phải một dòng.
 
-- [ ] **Step 1: Đổi chữ ký `bodyLogs.repository.ts`**
+- [x] **Step 1: Đổi chữ ký `bodyLogs.repository.ts`**
 
 `userId` là **tham số đầu tiên** của cả 5 hàm, khớp quán lệ của `goal.repository.ts`:
 
@@ -1994,11 +1994,11 @@ Xóa `import { LOCAL_USER_ID }` ở `:3`.
 P2025. Và với nhiều người dùng, `deleteMany({ where: { userId, date } })` là **lớp cách ly hàng**:
 `delete({ where: { date } })` sẽ xóa bản ghi của người khác.
 
-- [ ] **Step 2: Sửa service và controller của `bodyLogs`**
+- [x] **Step 2: Sửa service và controller của `bodyLogs`**
 
 Service nhận `userId` làm tham số đầu, truyền xuống repository. Controller truyền `req.user!.id`.
 
-- [ ] **Step 3: Đổi chữ ký `summary.repository.ts` — 3 hàm**
+- [x] **Step 3: Đổi chữ ký `summary.repository.ts` — 3 hàm**
 
 `findBodyLogsBetween`, `findDailyMealTotals`, `findGoal` nhận `userId` làm tham số đầu tiên. Xóa
 import hằng ở `:2`.
@@ -2057,7 +2057,7 @@ map, và ca "trung bình calo tuần bỏ qua ngày không ghi bữa nào" (`CLA
 thuộc vào `mealCount`. Test `test/features/summary/` hiện có canh hành vi đó — nếu chúng đỏ sau
 bước này thì bản thay đã đổi ngữ nghĩa, **không** phải test sai.
 
-- [ ] **Step 4: Sửa `summary.service.ts:42` và `summary.controller.ts:11`**
+- [x] **Step 4: Sửa `summary.service.ts:42` và `summary.controller.ts:11`**
 
 ```ts
 export async function getSummary(userId: string, range: SummaryQuery): Promise<SummaryResponse> {
@@ -2066,14 +2066,14 @@ export async function getSummary(userId: string, range: SummaryQuery): Promise<S
 Ba lời gọi repository bên trong đều thêm `userId`. `shared/stats/` **không đổi một dòng** — chúng
 là hàm thuần nhận dữ liệu đã lấy sẵn.
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 ```bash
 npx tsc --noEmit
 ```
 Expected: sạch trong `src/`.
 
-- [ ] **Step 6: Bàn giao**
+- [x] **Step 6: Bàn giao**
 
 Đề xuất: `refactor(bodyLogs,summary): pass userId through repository layer`
 
@@ -2107,7 +2107,7 @@ Expected: sạch trong `src/`.
 > **`selectDueReminders` (`:84`) là hàm thuần và vẫn ĐÚNG NGUYÊN** — nó lọc theo `enabled` +
 > `timeOfDay` + có topic, không quan tâm ai sở hữu. **Đừng viết lại.**
 
-- [ ] **Step 1: Viết test thất bại — hai user, một người đã ghi cân**
+- [x] **Step 1: Viết test thất bại — hai user, một người đã ghi cân**
 
 ```ts
 // server/test/features/reminders/scheduler.multiUser.test.ts
@@ -2203,13 +2203,13 @@ describe('findRemindersForAllUsers', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận đỏ**
+- [x] **Step 2: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/features/reminders/scheduler.multiUser.test.ts`
 Expected: FAIL — `ReminderRunnerDeps.hasWeightLogged` chưa nhận `userId`;
 `findRemindersForAllUsers` không tồn tại.
 
-- [ ] **Step 3: Thêm `userId` vào `ReminderView`**
+- [x] **Step 3: Thêm `userId` vào `ReminderView`**
 
 ```ts
 // server/src/features/reminders/dtos/reminders.response.ts
@@ -2229,7 +2229,7 @@ export interface ReminderView {
 > mình, nhưng nếu muốn giữ response sạch thì tách hai kiểu: `ReminderView` (API, không có
 > `userId`) và `ReminderRow` (scheduler, có `userId`). **Chọn một và ghi rõ lý do trong code.**
 
-- [ ] **Step 4: Đổi chữ ký `reminders.repository.ts`**
+- [x] **Step 4: Đổi chữ ký `reminders.repository.ts`**
 
 5 hàm hiện có nhận `userId` làm tham số đầu tiên. Thêm một hàm mới:
 
@@ -2246,7 +2246,7 @@ export async function findRemindersForAllUsers(): Promise<ReminderRecord[]> {
 `hasWeightLoggedOn(userId, date)` và `hasMealLoggedOn(userId, date)` — mệnh đề `where` mang
 `userId`, nếu không scheduler sẽ thấy "đã có người ghi cân" và im lặng với **tất cả**.
 
-- [ ] **Step 5: Đổi `ReminderRunnerDeps` và `runDueReminders`**
+- [x] **Step 5: Đổi `ReminderRunnerDeps` và `runDueReminders`**
 
 ```ts
 export interface ReminderRunnerDeps {
@@ -2272,16 +2272,16 @@ vẫn gọi `selectDueReminders` rồi lặp — chỉ truyền `reminder.userId
 Giữ nguyên hai quyết định đã có: **không gửi bù** khi server tắt (`:16-18`), và **không nuốt lỗi
 gửi** (`:115` — lỗi trả về dưới dạng `status: 'send-failed'`).
 
-- [ ] **Step 6: Sửa service, controller của `reminders`**
+- [x] **Step 6: Sửa service, controller của `reminders`**
 
 `listReminders(userId)`, `updateReminder(userId, …)`. Controller truyền `req.user!.id`.
 
-- [ ] **Step 7: Chạy test, xác nhận xanh**
+- [x] **Step 7: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/features/reminders/scheduler.multiUser.test.ts`
 Expected: PASS — 3 test.
 
-- [ ] **Step 8: Bàn giao**
+- [x] **Step 8: Bàn giao**
 
 Đề xuất: `fix(reminders): scan reminders across all users`
 
@@ -2301,7 +2301,7 @@ Expected: PASS — 3 test.
 - Produces: `createTestUser(email, password): Promise<{ id, email, password }>` ·
   `loginAgent(app, email, password): Promise<SuperAgentTest>`
 
-- [ ] **Step 1: Viết helper**
+- [x] **Step 1: Viết helper**
 
 ```ts
 // server/test/helpers/auth.ts
@@ -2346,7 +2346,7 @@ export async function loginAgent(app: Express, user: TestUser) {
 > thuộc bản `supertest` đang cài. Nếu không, viết một hàm bọc nhận `(method, path)` và tự gắn
 > header mỗi lần. **Đừng để test tự tắt CSRF** — làm thế là test một app khác với app chạy thật.
 
-- [ ] **Step 2: Viết test cách ly người dùng — deliverable quan trọng nhất**
+- [x] **Step 2: Viết test cách ly người dùng — deliverable quan trọng nhất**
 
 ```ts
 // server/test/features/userIsolation.test.ts
@@ -2471,7 +2471,7 @@ describe('cách ly người dùng — một truy vấn quên userId là rò dữ
 });
 ```
 
-- [ ] **Step 3: Chạy test cách ly, xác nhận đỏ rồi xanh**
+- [x] **Step 3: Chạy test cách ly, xác nhận đỏ rồi xanh**
 
 Run: `npx vitest run test/features/userIsolation.test.ts`
 
@@ -2479,12 +2479,12 @@ Nếu có ca nào **xanh ngay từ đầu** mà chưa sửa gì: đọc lại: c
 nó nói. Nếu ca nào **đỏ**: đó là một truy vấn còn thiếu `userId` — quay lại Task 7–9 sửa
 repository, **đừng** sửa test.
 
-- [ ] **Step 4: Sửa 5 file test hiện có**
+- [x] **Step 4: Sửa 5 file test hiện có**
 
 Bỏ `import { LOCAL_USER_ID }`, thay bằng `createTestUser` trong `beforeEach` và `loginAgent` cho
 mọi request. Xóa bản vá tạm đã thêm ở Task 2 Step 7.
 
-- [ ] **Step 5: Xóa hằng**
+- [x] **Step 5: Xóa hằng**
 
 ```bash
 grep -rn "LOCAL_USER_ID" src test
@@ -2494,7 +2494,7 @@ Expected: không còn kết quả nào ngoài chính `src/shared/constants.ts`. 
 Nếu grep còn kết quả: **chưa xong task**. Mỗi kết quả còn lại là một chỗ đang gán dữ liệu cho
 một user không tồn tại.
 
-- [ ] **Step 6: Toàn bộ test phải xanh**
+- [x] **Step 6: Toàn bộ test phải xanh**
 
 ```bash
 npx tsc --noEmit
@@ -2503,7 +2503,7 @@ npm test
 Expected: 208 test cũ + test mới của Task 1–10, **tất cả xanh**. Đây là lần đầu từ Task 6 mà
 `npm test` xanh trở lại.
 
-- [ ] **Step 7: Bàn giao**
+- [x] **Step 7: Bàn giao**
 
 Đề xuất: `test(auth): user isolation suite and login helper` + `refactor: drop LOCAL_USER_ID`
 
@@ -2533,7 +2533,7 @@ Expected: 208 test cũ + test mới của Task 1–10, **tất cả xanh**. Đâ
 phút**, và chính sách phiên đồng thời. Dùng giá trị này, khai thành hằng có tên ở đầu file để
 đổi một chỗ, và **hỏi chủ repo trước khi cứng hóa**.
 
-- [ ] **Step 1: Viết test thất bại**
+- [x] **Step 1: Viết test thất bại**
 
 ```ts
 // server/test/features/auth/bruteForce.test.ts
@@ -2639,12 +2639,12 @@ describe('kiểm soát phiên đồng thời', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận đỏ**
+- [x] **Step 2: Chạy test, xác nhận đỏ**
 
 Run: `npx vitest run test/features/auth/bruteForce.test.ts`
 Expected: FAIL — lần thứ 6 vẫn trả 401; phiên thứ nhất vẫn sống.
 
-- [ ] **Step 3: `loginAttempt.repository.ts`**
+- [x] **Step 3: `loginAttempt.repository.ts`**
 
 ```ts
 // server/src/features/auth/repositories/loginAttempt.repository.ts
@@ -2689,7 +2689,7 @@ export async function deleteAttemptsBefore(cutoff: Date): Promise<number> {
 }
 ```
 
-- [ ] **Step 4: Chèn kiểm ngưỡng vào `authenticate`, TRƯỚC khi gọi Argon2**
+- [x] **Step 4: Chèn kiểm ngưỡng vào `authenticate`, TRƯỚC khi gọi Argon2**
 
 Thay **toàn bộ** hàm `authenticate` của Task 5 bằng bản dưới. Ba hằng ở đầu file để đổi ngưỡng
 chỉ sửa một chỗ.
@@ -2778,7 +2778,7 @@ export async function deleteSessionsByUserIdExcept(
 }
 ```
 
-- [ ] **Step 5: Controller truyền `ip`, đá phiên cũ sau `regenerate`**
+- [x] **Step 5: Controller truyền `ip`, đá phiên cũ sau `regenerate`**
 
 ```ts
 authController.post('/login', async (req: Request, res: Response) => {
@@ -2799,7 +2799,7 @@ authController.post('/login', async (req: Request, res: Response) => {
 });
 ```
 
-- [ ] **Step 6: `trust proxy`**
+- [x] **Step 6: `trust proxy`**
 
 ```ts
 // server/src/app.ts, trước app.use(session(...))
@@ -2809,16 +2809,16 @@ authController.post('/login', async (req: Request, res: Response) => {
   if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
 ```
 
-- [ ] **Step 7: Dọn `LoginAttempt` định kỳ**
+- [x] **Step 7: Dọn `LoginAttempt` định kỳ**
 
 Mắc cạnh tác vụ dọn phiên ở `server.ts` (Task 6 Step 5): xóa hàng cũ hơn cửa sổ.
 
-- [ ] **Step 8: Chạy test, xác nhận xanh**
+- [x] **Step 8: Chạy test, xác nhận xanh**
 
 Run: `npx vitest run test/features/auth/bruteForce.test.ts`
 Expected: PASS — 6 test.
 
-- [ ] **Step 9: Verify toàn bộ giai đoạn A**
+- [x] **Step 9: Verify toàn bộ giai đoạn A**
 
 ```bash
 npx tsc --noEmit
@@ -2841,7 +2841,7 @@ curl -i -b c.txt http://localhost:3000/api/goal             # 200
 Xác nhận bằng mắt: `Set-Cookie` có `HttpOnly`, và **không** có `passwordHash` ở bất kỳ đâu trong
 body.
 
-- [ ] **Step 10: Bàn giao**
+- [x] **Step 10: Bàn giao**
 
 Đề xuất: `feat(auth): brute-force lockout and concurrent session control`
 
