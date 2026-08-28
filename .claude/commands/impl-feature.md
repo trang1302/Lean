@@ -49,7 +49,11 @@ SPEC bạn thấy mơ hồ hoặc thấy SPEC sai.
 
 - Bám cấu trúc 4 lớp: controller → service → repository → Prisma.
   `repositories/` là chỗ **duy nhất** được import `prisma`.
-- Mọi truy vấn mang `userId` lấy từ `LOCAL_USER_ID`.
+- Mọi truy vấn mang `userId`, lấy từ **phiên đăng nhập**: controller đọc `req.user!.id`
+  (do `requireAuth` gắn) rồi truyền xuống service làm **tham số đầu tiên**, service truyền
+  tiếp xuống repository. Service KHÔNG đọc `req`.
+- **Route mới phải khai vào `server/src/shared/rbac/permissionRegistry.ts`**, nếu không nó trả
+  `403` (mặc định TỪ CHỐI). Dòng hẹp đứng trước dòng rộng.
 - Phép tính nằm ở `shared/stats/`, không ở service hay controller.
 - Code tối thiểu để test xanh. Không thêm gì SPEC không yêu cầu.
 - Buộc phải lệch khỏi SPEC thì ghi lại lý do và báo ở tổng kết — đừng lệch im lặng.
