@@ -1,5 +1,7 @@
 import type { KeyboardEvent } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useNavigate } from 'react-router';
+import { Button } from '../components/ui';
+import { useSession } from '../features/auth';
 import s from './AppLayout.module.css';
 
 // Ba tab điều hướng cấp ứng dụng. Đây là ĐIỀU HƯỚNG THẬT giữa các trang (mỗi
@@ -31,13 +33,23 @@ const TABS = [
 ] as const;
 
 /**
- * Bọc ba route đầu (`/`, `/charts`, `/settings` — SPEC §5.2). Chưa có guard
- * phiên ở đây — đó là Bước 10, cần backend `auth`. Vùng danh tính + nút đăng
- * xuất chỉ CHỪA CHỖ: chưa có `SessionContext` (Bước 9) nên chưa có tên người
- * dùng thật để hiện, và nút đăng xuất chưa có gì để gọi — cố tình để
- * `disabled` thay vì gắn một handler rỗng giả vờ hoạt động.
+ * Bọc ba route đầu (`/`, `/charts`, `/settings` — SPEC §5.2).
+ *
+ * Guard phiên KHÔNG ở đây mà ở `RequireSession` bọc ngoài trong `routes.tsx` —
+ * nhờ vậy layout này luôn chạy với một phiên đã có thật, và `user` dưới đây
+ * không bao giờ `null`. Vẫn dùng optional chaining khi đọc email để layout
+ * không nổ nếu sau này ai đó cắm nó vào một route công khai.
  */
 export function AppLayout() {
+  const { user, signOut } = useSession();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut();
+    // `replace` để nút Back không quay lại trang đã đăng nhập sau khi đăng xuất.
+    void navigate('/login', { replace: true });
+  }
+
   return (
     <div className={s.shell}>
       <header className={s.header}>
@@ -57,21 +69,22 @@ export function AppLayout() {
           ))}
         </nav>
 
-        <div className={s.identity}>
-          {/* Chỗ cho danh tính người dùng — nạp thật ở Bước 9 (SessionContext). */}
-          {/*
-            KHÔNG render nút "Đăng xuất" khi chưa có phiên đăng nhập.
-
-            Bản trước để một nút `disabled` làm chỗ chừa. Nhưng người dùng thấy
-            chữ "Đăng xuất" thì mặc định là đang đăng nhập — bấm không được chỉ
-            trông như nút hỏng, không nói được rằng tính năng chưa tồn tại.
-            `title` giải thích chỉ hiện khi rê chuột, mà người ta thì bấm.
-
-            Bước 9 dựng `SessionContext`: render nút ở ĐÂY, chỉ khi có phiên thật,
-            và thay `identityPlaceholder` bằng tên người dùng.
-          */}
-          <span className={s.identityPlaceholder}>chưa đăng nhập</span>
-        </div>
+        {/*
+          Nút "Đăng xuất" chỉ render KHI CÓ phiên thật. Bản trước để một nút
+          `disabled` làm chỗ chừa và đã bị bỏ vì đúng lý do này: người dùng thấy
+          chữ "Đăng xuất" thì mặc định là đang đăng nhập, bấm không được chỉ
+          trông như nút hỏng.
+        */}
+        {user ? (
+          <div className={s.identity}>
+            <span className={s.identityEmail} title={user.email}>
+              {user.displayName ?? user.email}
+            </span>
+            <Button variant="secondary" onClick={() => void handleSignOut()}>
+              Đăng xuất
+            </Button>
+          </div>
+        ) : null}
       </header>
 
       <main className={s.content}>

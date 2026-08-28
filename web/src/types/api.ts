@@ -3,10 +3,26 @@
 // type tự động — đổi response ở backend là phải sửa file này cùng lúc.
 // Xem docs/features/web-shell/SPEC.md §3.4.
 //
-// Cố ý CHƯA có SessionUser/SessionResponse: feature `auth` chưa có code chạy
-// (server/src/features/ không có auth/), nên chép hình dạng response của nó
-// bây giờ là suy diễn, không phải chép tay. Thêm khi `features/auth/` dựng
-// (Bước 8 của web-shell/PLAN.md).
+// ---------------------------------------------------------------------------
+// auth — chép tay từ server/src/features/auth/dtos/auth.response.ts
+// ---------------------------------------------------------------------------
+
+/**
+ * KHÔNG có `passwordHash`, và sẽ không bao giờ có: server chọn trường tường
+ * minh qua `toPublicUser` nên một cột nhạy cảm thêm vào bảng `User` không tự
+ * rò ra đây. Đừng thêm trường vào interface này chỉ vì đoán server có.
+ */
+export interface SessionUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  status: string; // "active" | "disabled" — ràng buộc giá trị nằm ở Zod phía server
+}
+
+export interface SessionResponse {
+  user: SessionUser;
+  expiresAt: string | null; // ISO 8601
+}
 
 // ---------------------------------------------------------------------------
 // body-logs — docs/features/body-logs/SPEC.md §2

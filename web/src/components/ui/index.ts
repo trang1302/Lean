@@ -7,6 +7,8 @@
 export { Button } from './Button';
 export { Input, type InputProps } from './Input';
 export { NumberInput, type NumberInputProps } from './NumberInput';
+export { EmailInput, type EmailInputProps } from './EmailInput';
+export { PasswordInput, type PasswordInputProps } from './PasswordInput';
 export { Select } from './Select';
 export { Switch } from './Switch';
 export { Card } from './Card';
