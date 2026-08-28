@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError.js';
+import { getPermissionCodes } from '../../../shared/rbac/permissionCache.js';
 import { generateCsrfToken } from '../../../shared/security/csrf.js';
 import { loginSchema, registerSchema } from '../dtos/auth.request.js';
 import { toSessionResponse } from '../dtos/auth.response.js';
@@ -69,7 +70,11 @@ authController.post('/login', async (req: Request, res: Response) => {
   // mà loại trừ).
   await authService.revokeOtherSessions(user.id, req.sessionID);
 
-  res.json(toSessionResponse(user, req.session.cookie.expires ?? null));
+  // Tập quyền đọc qua cache, KHÔNG nhét vào phiên: đổi vai trò phải có hiệu
+  // lực ở request kế tiếp, không đợi người dùng đăng nhập lại.
+  const permissions = await getPermissionCodes(user.id);
+
+  res.json(toSessionResponse(user, [...permissions], req.session.cookie.expires ?? null));
 });
 
 /** Idempotent: gọi khi không có phiên vẫn 204. */
@@ -94,5 +99,6 @@ authController.get('/session', async (req: Request, res: Response) => {
     throw AppError.unauthorized();
   }
 
-  res.json(toSessionResponse(user, req.session.cookie.expires ?? null));
+  const permissions = await getPermissionCodes(user.id);
+  res.json(toSessionResponse(user, [...permissions], req.session.cookie.expires ?? null));
 });

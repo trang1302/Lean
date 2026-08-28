@@ -37,6 +37,14 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  // Nullable + SetNull có chủ đích: xóa một vai trò KHÔNG được xóa theo tài
+  // khoản. User `roleId = null` có tập quyền RỖNG → mọi route cần quyền đều
+  // 403 (fail closed), nhưng vẫn đăng nhập được để thấy màn "chưa được cấp
+  // quyền". Một user mang ĐÚNG MỘT vai trò — nhiều vai trò cộng dồn đẻ ra câu
+  // hỏi "hợp hay giao" mà chưa ai cần trả lời.
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
   sessions  Session[]
   bodyLogs  BodyLog[]
   meals     Meal[]
@@ -66,6 +74,50 @@ model LoginAttempt {
 
   @@index([emailKey, createdAt])
   @@index([ip, createdAt])
+}
+
+/// Danh mục vai trò ĐÓNG: sửa bằng seed + review code, không sửa qua UI.
+/// Một UI tạo vai trò là một UI để vô tình tạo ra vai trò có `rbac:manage`.
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique // "USER" | "ADMIN" | "SYSTEM_ADMIN" — không tiền tố ROLE_
+  name        String
+  description String?
+  sequence    Int      @default(0) // thứ tự hiển thị trên màn Phân quyền
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       User[]
+}
+
+/// `resource` + `action` tách rời DÙ `code` đã chứa cả hai: màn Phân quyền
+/// nhóm theo `resource`, và parse chuỗi `code` mỗi lần render là chỗ sinh lỗi.
+model Permission {
+  id       String @id @default(cuid())
+  code     String @unique // dạng resource:action, vd "log:view"
+  name     String
+  resource String // "log" | "goal" | "reminder" | "user" | "rbac"
+  action   String // "view" | "manage"
+  sequence Int
+
+  roles RolePermission[]
+
+  // Chặn hai hàng cùng (log, view) mà `code` gõ khác nhau (log:view vs logs:view).
+  @@unique([resource, action])
+}
+
+/// Khóa chính KÉP, không có cột `id` — cùng lối với `@@id([userId, date])` của
+/// BodyLog. Ràng buộc "một cặp một lần" do DB cưỡng chế, không do code nhớ.
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
 }
 
 model BodyLog {

@@ -1,6 +1,7 @@
 import request from 'supertest';
 import type { Express } from 'express';
 import { prisma } from '../../src/lib/db.js';
+import { clear as clearPermissionCache } from '../../src/shared/rbac/permissionCache.js';
 import { hashPassword } from '../../src/shared/security/password.js';
 
 /**
@@ -16,18 +17,43 @@ export interface TestUser {
   id: string;
   email: string;
   password: string;
+  roleCode: RoleCode;
 }
 
 export type Agent = ReturnType<typeof request.agent>;
 
+/** Ba vai trò của seed. `null` = tài khoản chưa được cấp vai trò (tập quyền rỗng). */
+export type RoleCode = 'USER' | 'ADMIN' | 'SYSTEM_ADMIN' | null;
+
+/**
+ * Vai trò và quyền do `test/globalSetup.ts` seed một lần cho cả run — test
+ * không tự tạo vai trò, nó chỉ tra id theo `code`.
+ */
+async function roleIdByCode(code: RoleCode): Promise<string | null> {
+  if (code === null) return null;
+  const role = await prisma.role.findUnique({ where: { code }, select: { id: true } });
+  if (!role) throw new Error(`Chưa seed vai trò '${code}' — kiểm tra test/globalSetup.ts`);
+  return role.id;
+}
+
+/**
+ * Mặc định `USER`: đủ 6 quyền dữ liệu cá nhân, tức là mọi test feature hiện có
+ * chạy như trước khi có RBAC. Test quản trị truyền `'ADMIN'` hoặc
+ * `'SYSTEM_ADMIN'`; test "chưa được cấp quyền" truyền `null`.
+ */
 export async function createTestUser(
   email: string,
   password = 'matkhaudai12',
+  roleCode: RoleCode = 'USER',
 ): Promise<TestUser> {
   const user = await prisma.user.create({
-    data: { email, passwordHash: await hashPassword(password) },
+    data: {
+      email,
+      passwordHash: await hashPassword(password),
+      roleId: await roleIdByCode(roleCode),
+    },
   });
-  return { id: user.id, email, password };
+  return { id: user.id, email, password, roleCode };
 }
 
 /**
@@ -67,6 +93,15 @@ export async function loginWith(agent: Agent, email: string, password: string) {
  *
  * KHÔNG tắt CSRF trong test — làm thế là test một app khác với app chạy thật.
  */
+/**
+ * Xóa cache quyền. BẮT BUỘC gọi ở `beforeEach` của test nào xóa rồi tạo lại
+ * user: cuid có thể trùng lại? Không — nhưng cache sống xuyên suốt file test,
+ * và một ca sửa ma trận quyền sẽ làm bẩn ca sau nếu không dọn.
+ */
+export function resetPermissionCache(): void {
+  clearPermissionCache();
+}
+
 export async function loginAgent(app: Express, user: TestUser): Promise<Agent> {
   const agent = await anonAgent(app);
   const res = await loginWith(agent, user.email, user.password);

@@ -2,12 +2,20 @@ import { prisma } from '../../../lib/db.js';
 
 // Chỗ DUY NHẤT của feature này được import `prisma`.
 
+export interface UserRole {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export interface UserRecord {
   id: string;
   email: string;
   passwordHash: string;
   displayName: string | null;
   status: string;
+  /** `null` khi tài khoản chưa được cấp vai trò → tập quyền rỗng, fail closed. */
+  role: UserRole | null;
 }
 
 const PUBLIC_AND_HASH = {
@@ -16,6 +24,7 @@ const PUBLIC_AND_HASH = {
   passwordHash: true,
   displayName: true,
   status: true,
+  role: { select: { id: true, code: true, name: true } },
 } as const;
 
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
@@ -34,8 +43,15 @@ export async function createUser(data: {
   email: string;
   passwordHash: string;
   displayName: string | null;
+  roleId: string | null;
 }): Promise<UserRecord> {
   return prisma.user.create({ data, select: PUBLIC_AND_HASH });
+}
+
+/** Vai trò mặc định của tài khoản tự đăng ký. Gán CỨNG phía server. */
+export async function findRoleIdByCode(code: string): Promise<string | null> {
+  const role = await prisma.role.findUnique({ where: { code }, select: { id: true } });
+  return role?.id ?? null;
 }
 
 export async function updateLastLoginAt(userId: string, at: Date): Promise<void> {

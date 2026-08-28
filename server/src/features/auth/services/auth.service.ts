@@ -17,6 +17,9 @@ import * as userRepository from '../repositories/user.repository.js';
 const MAX_FAILURES = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
+/** Vai trò của mọi tài khoản tự đăng ký. Nâng vai trò chỉ qua PUT /users/:id/role. */
+const DEFAULT_ROLE_CODE = 'USER';
+
 // Tầng này KHÔNG biết `req`, KHÔNG biết Prisma. Nhận dữ liệu đã validate,
 // trả PublicUser hoặc ném AppError.
 
@@ -32,10 +35,16 @@ export async function registerUser(input: RegisterInput): Promise<PublicUser> {
     ]);
   }
 
+  // Vai trò gán CỨNG phía server, KHÔNG đọc từ request body — nếu không thì ai
+  // cũng tự đăng ký làm SYSTEM_ADMIN. `null` khi chưa chạy seed: tài khoản vẫn
+  // tạo được nhưng có tập quyền rỗng, tức fail closed chứ không fail open.
+  const roleId = await userRepository.findRoleIdByCode(DEFAULT_ROLE_CODE);
+
   const user = await userRepository.createUser({
     email: input.email,
     passwordHash: await hashPassword(input.password),
     displayName: input.displayName ?? null,
+    roleId,
   });
 
   return toPublicUser(user);

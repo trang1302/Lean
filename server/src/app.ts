@@ -12,6 +12,7 @@ import { goalRouter } from './features/goal/index.js';
 import { summaryRouter } from './features/summary/index.js';
 import { remindersRouter } from './features/reminders/index.js';
 import { errorHandler, notFoundHandler } from './shared/errors/errorHandler.js';
+import { permissionGuard } from './shared/rbac/permissionGuard.js';
 import { csrfProtection } from './shared/security/csrf.js';
 
 /**
@@ -93,6 +94,19 @@ export function createApp(): express.Express {
   // (là những gì nằm TRÊN dòng này). Thêm một router mới ở dưới thì nó được
   // bảo vệ sẵn, không có bước "nhớ khóa route mới" nào để quên.
   app.use(requireAuth);
+
+  // Chốt chặn thứ HAI, cắm MỘT lần, ngay sau requireAuth và trước mọi router.
+  // requireAuth trả lời "anh là ai"; permissionGuard trả lời "vai trò của anh
+  // có được gọi endpoint này không". Không feature nào tự cắm guard riêng, và
+  // không controller/service nào được chứa `if (role === ...)`.
+  //
+  // Mặc định TỪ CHỐI: route không khai trong permissionRegistry → 403.
+  //
+  // Cắm ở '/api' chứ không ở cấp app: `req.path` bên trong middleware khi đó
+  // đã bỏ tiền tố, khớp đúng định nghĩa "path dưới /api" của registry. Cắm ở
+  // cấp app thì mọi path ngoài /api cũng rơi vào nhánh mặc-định-từ-chối và trả
+  // 403 thay cho 404 của notFoundHandler.
+  app.use('/api', permissionGuard);
 
   app.use('/api/body-logs', bodyLogsRouter);
   app.use('/api/meals', mealsRouter);
