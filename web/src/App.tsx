@@ -1,7 +1,8 @@
 import { RouterProvider } from 'react-router';
 import { router } from './router/routes';
 import { SessionProvider } from './features/auth';
-import { setOnUnauthorized } from './lib/apiClient';
+import { currentCsrfToken } from './features/auth/api/auth.api';
+import { setCsrfTokenProvider, setOnUnauthorized } from './lib/apiClient';
 
 // Móc thứ 2 mà `apiClient.ts` chừa sẵn: xử lý "hết phiên" (401 UNAUTHORIZED)
 // ở ĐÚNG MỘT chỗ, thay cho no-op mặc định.
@@ -20,6 +21,12 @@ setOnUnauthorized(() => {
     replace: true,
   });
 });
+
+// Móc thứ nhất mà `apiClient.ts` chừa sẵn. Cắm ở cấp module cùng lý do với
+// `setOnUnauthorized`: request ghi đầu tiên có thể xảy ra trước khi effect nào
+// kịp chạy. Hàm đọc đồng bộ từ bộ nhớ module của `auth.api.ts`; việc đi lấy
+// token là của `refreshCsrfToken`, do `SessionProvider` gọi lúc khởi động.
+setCsrfTokenProvider(currentCsrfToken);
 
 export function App() {
   return (

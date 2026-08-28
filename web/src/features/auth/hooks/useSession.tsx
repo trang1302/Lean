@@ -33,6 +33,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>({ user: null, loading: true });
 
   const refresh = useCallback(async () => {
+    // Lấy CSRF token TRƯỚC khi hỏi phiên: ba trang dữ liệu nằm sau
+    // `RequireSession`, vốn chờ `loading === false` mới render — nên khi người
+    // dùng bấm Lưu được thì token chắc chắn đã có. Thiếu nó là 403 ở lần ghi
+    // đầu tiên sau mỗi lần tải trang.
+    await authApi.refreshCsrfToken();
     const session = await authApi.getSession();
     setState({ user: session?.user ?? null, loading: false });
   }, []);

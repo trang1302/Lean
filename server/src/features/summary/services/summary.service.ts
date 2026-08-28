@@ -52,7 +52,7 @@ function ma7ByDate(points: readonly MovingAveragePoint[]): Map<string, number | 
   return new Map(points.map((point) => [point.date, point.ma7]));
 }
 
-export async function getSummary(range: SummaryQuery): Promise<SummaryResponse> {
+export async function getSummary(userId: string, range: SummaryQuery): Promise<SummaryResponse> {
   const today = todayIso();
   const trendFrom = addDays(today, -TREND_LOOKBACK_DAYS);
 
@@ -67,10 +67,10 @@ export async function getSummary(range: SummaryQuery): Promise<SummaryResponse> 
   const dataTo = later(range.to, today);
 
   const [bodyLogs, mealTotals, goal] = await Promise.all([
-    summaryRepository.findBodyLogsBetween(dataFrom, dataTo),
+    summaryRepository.findBodyLogsBetween(userId, dataFrom, dataTo),
     // Calo không đi vào phép trung bình trượt nào nên chỉ cần đúng [from, to].
-    summaryRepository.findDailyMealTotals(range.from, range.to),
-    summaryRepository.findGoal(),
+    summaryRepository.findDailyMealTotals(userId, range.from, range.to),
+    summaryRepository.findGoal(userId),
   ]);
 
   // Gom điểm dữ liệu cho từng số đo. Bỏ qua `null` — "không đo" khác "đo ra 0".

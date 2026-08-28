@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError.js';
+import { generateCsrfToken } from '../../../shared/security/csrf.js';
 import { loginSchema, registerSchema } from '../dtos/auth.request.js';
 import { toSessionResponse } from '../dtos/auth.response.js';
 import * as authService from '../services/auth.service.js';
@@ -32,6 +33,19 @@ function destroySession(req: Request): Promise<void> {
   });
 }
 
+/**
+ * Web gọi endpoint này lúc khởi động và gắn token vào mọi request GHI.
+ *
+ * GET nên KHÔNG cần token — nếu không thì không có đường nào lấy token đầu tiên.
+ *
+ * Phải gọi LẠI sau khi đăng nhập: định danh buộc token đổi từ '' sang userId
+ * (xem `shared/security/csrf.ts`), nên token lấy lúc còn vô danh hết hiệu lực
+ * ngay khi phiên bắt đầu.
+ */
+authController.get('/csrf', (req: Request, res: Response) => {
+  res.json({ csrfToken: generateCsrfToken(req, res) });
+});
+
 /** Đăng ký mở công khai. Vai trò gán cứng phía server ở giai đoạn B — KHÔNG đọc từ body. */
 authController.post('/register', async (req: Request, res: Response) => {
   const input = registerSchema.parse(req.body ?? {});
@@ -40,7 +54,8 @@ authController.post('/register', async (req: Request, res: Response) => {
 
 authController.post('/login', async (req: Request, res: Response) => {
   const input = loginSchema.parse(req.body ?? {});
-  const user = await authService.authenticate(input);
+  // `req.ip` chỉ đúng khi `trust proxy` khớp hạ tầng thật — xem app.ts.
+  const user = await authService.authenticate(input, req.ip ?? 'unknown');
 
   // Xoay session id TRƯỚC khi ghi userId. Không xoay thì id trước và sau đăng
   // nhập là một, và kẻ tấn công ép nạn nhân dùng một id hắn biết rồi dùng lại
@@ -48,6 +63,11 @@ authController.post('/login', async (req: Request, res: Response) => {
   await regenerateSession(req);
   req.session.userId = user.id;
   await saveSession(req);
+
+  // Đá mọi phiên KHÁC của user này. Chạy SAU `regenerate` + `save`, nếu không
+  // nó xóa luôn phiên vừa tạo (lúc đó `req.sessionID` chưa có hàng trong DB để
+  // mà loại trừ).
+  await authService.revokeOtherSessions(user.id, req.sessionID);
 
   res.json(toSessionResponse(user, req.session.cookie.expires ?? null));
 });

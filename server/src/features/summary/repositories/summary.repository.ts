@@ -1,5 +1,4 @@
 import { prisma } from '../../../lib/db.js';
-import { LOCAL_USER_ID } from '../../../shared/constants.js';
 
 /**
  * Lớp duy nhất của feature `summary` được import `prisma`.
@@ -8,7 +7,7 @@ import { LOCAL_USER_ID } from '../../../shared/constants.js';
  * đọc, và một endpoint tổng hợp phụ thuộc vào ba feature khác là cách chắc chắn
  * nhất để một thay đổi nhỏ ở đó làm vỡ dashboard.
  *
- * Mọi truy vấn mang `userId` kể cả khi chỉ có một người dùng — xem constants.ts.
+ * Mọi truy vấn mang `userId` — tham số đầu tiên, do service truyền xuống từ phiên.
  */
 
 export interface BodyLogRow {
@@ -42,11 +41,12 @@ export interface GoalRow {
  * thứ tự thời gian — đó là một lý do nữa để không dùng `DateTime`.
  */
 export async function findBodyLogsBetween(
+  userId: string,
   fromIso: string,
   toIso: string,
 ): Promise<BodyLogRow[]> {
   return prisma.bodyLog.findMany({
-    where: { userId: LOCAL_USER_ID, date: { gte: fromIso, lte: toIso } },
+    where: { userId, date: { gte: fromIso, lte: toIso } },
     select: {
       date: true,
       weightKg: true,
@@ -65,6 +65,7 @@ export async function findBodyLogsBetween(
  * biệt được "ngày nhịn ăn" với "ngày quên ghi".
  */
 export async function findDailyMealTotals(
+  userId: string,
   fromIso: string,
   toIso: string,
 ): Promise<DailyMealTotal[]> {
@@ -75,7 +76,10 @@ export async function findDailyMealTotals(
   // `args & MealGroup[]` và báo TS2345. Để suy kiểu tự chạy.
   const groups = await prisma.meal.groupBy({
     by: ['date'],
-    where: { userId: LOCAL_USER_ID, date: { gte: fromIso, lte: toIso } },
+    // `userId` phải nằm Ở ĐÂY, trong `where` của chính groupBy. Thiếu nó là
+    // gộp calo của MỌI người dùng vào một tổng — không ném lỗi, không test
+    // feature nào bắt được, chỉ là số liệu sai một cách âm thầm.
+    where: { userId, date: { gte: fromIso, lte: toIso } },
     _sum: { calories: true },
     _count: { _all: true },
   });
@@ -89,9 +93,9 @@ export async function findDailyMealTotals(
 }
 
 /** Mục tiêu hiện tại; `null` khi người dùng chưa đặt. */
-export async function findGoal(): Promise<GoalRow | null> {
+export async function findGoal(userId: string): Promise<GoalRow | null> {
   return prisma.goal.findUnique({
-    where: { userId: LOCAL_USER_ID },
+    where: { userId },
     select: {
       startWeightKg: true,
       startDate: true,

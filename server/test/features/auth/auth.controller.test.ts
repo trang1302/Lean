@@ -3,8 +3,12 @@ import request from 'supertest';
 import { createApp } from '../../../src/app.js';
 import { prisma } from '../../../src/lib/db.js';
 import { hashPassword } from '../../../src/shared/security/password.js';
+import { anonAgent, loginWith, type Agent } from '../../helpers/auth.js';
 
 const app = createApp();
+
+/** Agent vô danh đã cầm CSRF token — mọi POST công khai đi qua nó. */
+let anon: Agent;
 
 beforeEach(async () => {
   await prisma.session.deleteMany();
@@ -17,6 +21,7 @@ beforeEach(async () => {
       displayName: 'Người dùng',
     },
   });
+  anon = await anonAgent(app);
 });
 
 afterAll(async () => {
@@ -25,7 +30,7 @@ afterAll(async () => {
 
 describe('POST /api/auth/register', () => {
   it('đăng ký thành công → 201, KHÔNG có passwordHash trong body', async () => {
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/register')
       .send({ email: 'moi@lean.local', password: 'matkhaudai12' });
 
@@ -38,7 +43,7 @@ describe('POST /api/auth/register', () => {
     // Đối xứng với ca "123456 đăng nhập được" bên dưới. Hai ca này cùng nhau
     // mã hóa quyết định 4 của design doc: policy độ dài thuộc lúc tạo, không
     // thuộc lúc xác thực.
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/register')
       .send({ email: 'ngan@lean.local', password: '123456' });
 
@@ -48,7 +53,7 @@ describe('POST /api/auth/register', () => {
   });
 
   it('email trùng → 400 với fields chỉ vào email', async () => {
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/register')
       .send({ email: 'user@lean.local', password: 'matkhaudai12' });
 
@@ -57,7 +62,7 @@ describe('POST /api/auth/register', () => {
   });
 
   it('email khác hoa thường vẫn là trùng — chuẩn hóa ở DTO', async () => {
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/register')
       .send({ email: '  USER@Lean.Local  ', password: 'matkhaudai12' });
 
@@ -68,7 +73,7 @@ describe('POST /api/auth/register', () => {
     // Nếu chuẩn hóa chỉ chạy lúc kiểm trùng mà không áp vào giá trị đem đi lưu,
     // hai tài khoản 'A@x.com' và 'a@x.com' vẫn vào được DB qua hai request khác
     // nhau — @unique của SQLite phân biệt hoa thường.
-    await request(app)
+    await anon
       .post('/api/auth/register')
       .send({ email: '  MoiNua@Lean.Local  ', password: 'matkhaudai12' });
 
@@ -78,7 +83,7 @@ describe('POST /api/auth/register', () => {
 
 describe('POST /api/auth/login', () => {
   it('đúng mật khẩu → 200, Set-Cookie có HttpOnly', async () => {
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/login')
       .send({ email: 'user@lean.local', password: '123456' });
 
@@ -89,7 +94,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('mật khẩu 6 ký tự đăng nhập ĐƯỢC — không áp min 8 ở đường login', async () => {
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/login')
       .send({ email: 'user@lean.local', password: '123456' });
 
@@ -100,10 +105,10 @@ describe('POST /api/auth/login', () => {
     // auth/SPEC.md §7.3: phân biệt hai ca biến form đăng nhập thành công cụ
     // liệt kê tài khoản. Với app sức khỏe, "email này có tài khoản" đã là
     // thông tin riêng tư.
-    const wrongPassword = await request(app)
+    const wrongPassword = await anon
       .post('/api/auth/login')
       .send({ email: 'user@lean.local', password: 'sai-mat-khau' });
-    const noSuchEmail = await request(app)
+    const noSuchEmail = await anon
       .post('/api/auth/login')
       .send({ email: 'khongco@lean.local', password: 'sai-mat-khau' });
 
@@ -113,7 +118,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('email sai định dạng → 400 kèm fields', async () => {
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/login')
       .send({ email: 'khong-phai-email', password: '123456' });
 
@@ -127,7 +132,7 @@ describe('POST /api/auth/login', () => {
       data: { status: 'disabled' },
     });
 
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/login')
       .send({ email: 'user@lean.local', password: '123456' });
 
@@ -141,7 +146,7 @@ describe('POST /api/auth/login', () => {
       data: { status: 'disabled' },
     });
 
-    const res = await request(app)
+    const res = await anon
       .post('/api/auth/login')
       .send({ email: 'user@lean.local', password: 'sai' });
 
@@ -149,7 +154,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('đăng nhập KHÔNG ghi phiên của user khác, và chỉ tạo đúng một phiên', async () => {
-    await request(app).post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
+    await anon.post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
 
     const rows = await prisma.session.findMany();
     expect(rows).toHaveLength(1);
@@ -165,12 +170,12 @@ describe('POST /api/auth/login', () => {
     //
     // Đăng nhập HAI lần trên cùng agent thì chứng minh được thật: nếu
     // `regenerate` không chạy, lần hai dùng lại đúng session id của lần một.
-    const agent = request.agent(app);
+    const agent = await anonAgent(app);
 
-    await agent.post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
+    await loginWith(agent, 'user@lean.local', '123456');
     const first = await prisma.session.findMany();
 
-    await agent.post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
+    await loginWith(agent, 'user@lean.local', '123456');
     const second = await prisma.session.findMany();
 
     expect(first).toHaveLength(1);
@@ -180,15 +185,15 @@ describe('POST /api/auth/login', () => {
 
 describe('GET /api/auth/session', () => {
   it('không cookie → 401 UNAUTHORIZED', async () => {
-    const res = await request(app).get('/api/auth/session');
+    const res = await anon.get('/api/auth/session');
 
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
 
   it('có cookie → 200, KHÔNG có passwordHash ở bất kỳ đâu trong body', async () => {
-    const agent = request.agent(app);
-    await agent.post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
+    const agent = await anonAgent(app);
+    await loginWith(agent, 'user@lean.local', '123456');
 
     const res = await agent.get('/api/auth/session');
 
@@ -198,8 +203,8 @@ describe('GET /api/auth/session', () => {
   });
 
   it('phiên trỏ vào user đã bị xóa → 401, không phải 500', async () => {
-    const agent = request.agent(app);
-    await agent.post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
+    const agent = await anonAgent(app);
+    await loginWith(agent, 'user@lean.local', '123456');
 
     await prisma.user.deleteMany();
 
@@ -210,8 +215,8 @@ describe('GET /api/auth/session', () => {
 
 describe('POST /api/auth/logout', () => {
   it('đăng xuất → 204, sau đó GET /session trả 401', async () => {
-    const agent = request.agent(app);
-    await agent.post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
+    const agent = await anonAgent(app);
+    await loginWith(agent, 'user@lean.local', '123456');
 
     expect((await agent.post('/api/auth/logout')).status).toBe(204);
     expect((await agent.get('/api/auth/session')).status).toBe(401);
@@ -220,14 +225,14 @@ describe('POST /api/auth/logout', () => {
   it('đăng xuất khi CHƯA đăng nhập vẫn 204 (idempotent)', async () => {
     // Trả 401 ở đây chỉ tạo nhánh lỗi cho hành động vốn đã đạt mục đích:
     // người dùng muốn hết đăng nhập, và họ đang hết đăng nhập.
-    expect((await request(app).post('/api/auth/logout')).status).toBe(204);
+    expect((await anon.post('/api/auth/logout')).status).toBe(204);
   });
 
   it('đăng xuất XÓA hàng phiên khỏi DB, không chỉ xóa cookie', async () => {
     // Xóa cookie mà để hàng phiên sống là để lại một session id còn hiệu lực:
     // ai giữ được id đó vẫn dùng lại được.
-    const agent = request.agent(app);
-    await agent.post('/api/auth/login').send({ email: 'user@lean.local', password: '123456' });
+    const agent = await anonAgent(app);
+    await loginWith(agent, 'user@lean.local', '123456');
     expect(await prisma.session.count()).toBe(1);
 
     await agent.post('/api/auth/logout');

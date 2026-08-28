@@ -2,13 +2,17 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../../src/app.js';
 import { prisma } from '../../../src/lib/db.js';
-import { LOCAL_USER_ID } from '../../../src/shared/constants.js';
-import { seedTestUsers } from '../../helpers/auth.js';
+import { createTestUser, loginAgent, type Agent, type TestUser } from '../../helpers/auth.js';
 import { addDays, todayIso } from '../../../src/lib/time.js';
 
 const app = createApp();
 
-const OTHER_USER = 'someone-else';
+// Người dùng thật + agent đã đăng nhập, dựng lại ở mỗi test.
+// `otherUser` là chủ sở hữu của những bản ghi mà test cách ly dùng để chứng
+// minh dữ liệu không rò sang người đang gọi API.
+let user: TestUser;
+let otherUser: TestUser;
+let agent: Agent;
 
 // Ngày neo theo "hôm nay" của TZ chứ không hardcode: `pastOrTodayDateString`
 // từ chối ngày tương lai, nên một chuỗi cố định sẽ hỏng khi lịch chạy qua nó.
@@ -23,7 +27,11 @@ beforeEach(async () => {
   await prisma.bodyLog.deleteMany();
   await prisma.goal.deleteMany();
   await prisma.reminder.deleteMany();
-  await seedTestUsers();
+  await prisma.session.deleteMany();
+  await prisma.user.deleteMany();
+  user = await createTestUser('alice@lean.local');
+  otherUser = await createTestUser('bob@lean.local');
+  agent = await loginAgent(app, user);
 });
 
 afterAll(async () => {
@@ -33,10 +41,10 @@ afterAll(async () => {
 describe('GET /api/body-logs/:date', () => {
   it('trả số đo của ngày đã ghi', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'ổn' },
+      data: { userId: user.id, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'ổn' },
     });
 
-    const res = await request(app).get(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.get(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -49,16 +57,16 @@ describe('GET /api/body-logs/:date', () => {
 
   it('không rò rỉ userId ra response', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 72.4 },
+      data: { userId: user.id, date: YESTERDAY, weightKg: 72.4 },
     });
 
-    const res = await request(app).get(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.get(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.body).not.toHaveProperty('userId');
   });
 
   it('404 khi ngày đó chưa ghi gì', async () => {
-    const res = await request(app).get(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.get(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
@@ -66,16 +74,16 @@ describe('GET /api/body-logs/:date', () => {
 
   it('không thấy bản ghi của user khác', async () => {
     await prisma.bodyLog.create({
-      data: { userId: OTHER_USER, date: YESTERDAY, weightKg: 60.1 },
+      data: { userId: otherUser.id, date: YESTERDAY, weightKg: 60.1 },
     });
 
-    const res = await request(app).get(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.get(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.status).toBe(404);
   });
 
   it('400 khi date sai định dạng', async () => {
-    const res = await request(app).get('/api/body-logs/06-08-2026');
+    const res = await agent.get('/api/body-logs/06-08-2026');
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -85,14 +93,14 @@ describe('GET /api/body-logs/:date', () => {
   });
 
   it('400 khi date không có thật', async () => {
-    const res = await request(app).get('/api/body-logs/2026-02-30');
+    const res = await agent.get('/api/body-logs/2026-02-30');
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('400 khi date ở tương lai', async () => {
-    const res = await request(app).get(`/api/body-logs/${TOMORROW}`);
+    const res = await agent.get(`/api/body-logs/${TOMORROW}`);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -104,7 +112,7 @@ describe('GET /api/body-logs/:date', () => {
 
 describe('PUT /api/body-logs/:date', () => {
   it('tạo mới khi ngày đó chưa có', async () => {
-    const res = await request(app)
+    const res = await agent
       .put(`/api/body-logs/${YESTERDAY}`)
       .send({ weightKg: 72.4, waistCm: 88 });
 
@@ -112,26 +120,26 @@ describe('PUT /api/body-logs/:date', () => {
     expect(res.body).toMatchObject({ date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: null });
 
     const row = await prisma.bodyLog.findUnique({
-      where: { userId_date: { userId: LOCAL_USER_ID, date: YESTERDAY } },
+      where: { userId_date: { userId: user.id, date: YESTERDAY } },
     });
     expect(row?.weightKg).toBe(72.4);
   });
 
-  it('gắn LOCAL_USER_ID cho bản ghi tạo mới', async () => {
-    await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 72.4 });
+  it('gắn user.id cho bản ghi tạo mới', async () => {
+    await agent.put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 72.4 });
 
     const rows = await prisma.bodyLog.findMany();
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.userId).toBe(LOCAL_USER_ID);
+    expect(rows[0]?.userId).toBe(user.id);
   });
 
   // Ba ca upsert — chỗ dễ regress nhất của feature này.
   it('ca 1: trường VẮNG MẶT giữ nguyên giá trị cũ', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'cũ' },
+      data: { userId: user.id, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'cũ' },
     });
 
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 71.9 });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 71.9 });
 
     expect(res.status).toBe(200);
     expect(res.body.weightKg).toBe(71.9);
@@ -141,10 +149,10 @@ describe('PUT /api/body-logs/:date', () => {
 
   it('ca 2: gửi null XÓA giá trị', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'cũ' },
+      data: { userId: user.id, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'cũ' },
     });
 
-    const res = await request(app)
+    const res = await agent
       .put(`/api/body-logs/${YESTERDAY}`)
       .send({ waistCm: null, note: null });
 
@@ -156,10 +164,10 @@ describe('PUT /api/body-logs/:date', () => {
 
   it('ca 3: gửi số ĐẶT giá trị mới', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 72.4, waistCm: 88 },
+      data: { userId: user.id, date: YESTERDAY, weightKg: 72.4, waistCm: 88 },
     });
 
-    const res = await request(app)
+    const res = await agent
       .put(`/api/body-logs/${YESTERDAY}`)
       .send({ weightKg: 71.9, waistCm: 87.5 });
 
@@ -170,10 +178,10 @@ describe('PUT /api/body-logs/:date', () => {
 
   it('body rỗng không xóa gì cả', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'cũ' },
+      data: { userId: user.id, date: YESTERDAY, weightKg: 72.4, waistCm: 88, note: 'cũ' },
     });
 
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({});
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({});
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ weightKg: 72.4, waistCm: 88, note: 'cũ' });
@@ -181,20 +189,20 @@ describe('PUT /api/body-logs/:date', () => {
 
   it('không đụng vào bản ghi cùng ngày của user khác', async () => {
     await prisma.bodyLog.create({
-      data: { userId: OTHER_USER, date: YESTERDAY, weightKg: 60.1 },
+      data: { userId: otherUser.id, date: YESTERDAY, weightKg: 60.1 },
     });
 
-    await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 72.4 });
+    await agent.put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 72.4 });
 
     const other = await prisma.bodyLog.findUnique({
-      where: { userId_date: { userId: OTHER_USER, date: YESTERDAY } },
+      where: { userId_date: { userId: otherUser.id, date: YESTERDAY } },
     });
     expect(other?.weightKg).toBe(60.1);
     expect(await prisma.bodyLog.count()).toBe(2);
   });
 
   it('400 khi weightKg <= 0', async () => {
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 0 });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 0 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -204,14 +212,14 @@ describe('PUT /api/body-logs/:date', () => {
   });
 
   it('400 khi weightKg >= 500', async () => {
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 500 });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: 500 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('400 khi waistCm >= 300', async () => {
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ waistCm: 300 });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ waistCm: 300 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -221,14 +229,14 @@ describe('PUT /api/body-logs/:date', () => {
   });
 
   it('400 khi weightKg không phải số', async () => {
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: '72.4' });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ weightKg: '72.4' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('400 khi date ở tương lai — không cho ghi trước', async () => {
-    const res = await request(app).put(`/api/body-logs/${TOMORROW}`).send({ weightKg: 72.4 });
+    const res = await agent.put(`/api/body-logs/${TOMORROW}`).send({ weightKg: 72.4 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -236,7 +244,7 @@ describe('PUT /api/body-logs/:date', () => {
   });
 
   it('400 khi body có trường lạ', async () => {
-    const res = await request(app)
+    const res = await agent
       .put(`/api/body-logs/${YESTERDAY}`)
       .send({ weight: 72.4 });
 
@@ -248,17 +256,17 @@ describe('PUT /api/body-logs/:date', () => {
 describe('DELETE /api/body-logs/:date', () => {
   it('xóa bản ghi và trả 204', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 72.4 },
+      data: { userId: user.id, date: YESTERDAY, weightKg: 72.4 },
     });
 
-    const res = await request(app).delete(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.delete(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.status).toBe(204);
     expect(await prisma.bodyLog.count()).toBe(0);
   });
 
   it('404 khi ngày đó chưa ghi gì', async () => {
-    const res = await request(app).delete(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.delete(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
@@ -266,17 +274,17 @@ describe('DELETE /api/body-logs/:date', () => {
 
   it('404 và không xóa bản ghi của user khác', async () => {
     await prisma.bodyLog.create({
-      data: { userId: OTHER_USER, date: YESTERDAY, weightKg: 60.1 },
+      data: { userId: otherUser.id, date: YESTERDAY, weightKg: 60.1 },
     });
 
-    const res = await request(app).delete(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.delete(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.status).toBe(404);
     expect(await prisma.bodyLog.count()).toBe(1);
   });
 
   it('400 khi date sai định dạng', async () => {
-    const res = await request(app).delete('/api/body-logs/khong-phai-ngay');
+    const res = await agent.delete('/api/body-logs/khong-phai-ngay');
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -300,10 +308,10 @@ describe('PUT /api/body-logs/:date — ghi MỘT số đo không đụng bốn s
   // xoá dữ liệu xảy ra, tức là một test sai.
   it.each(MEASURE_FIELDS)('sửa %s giữ nguyên bốn trường còn lại', async (field) => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, ...FULL_ROW },
+      data: { userId: user.id, date: YESTERDAY, ...FULL_ROW },
     });
 
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ [field]: 50 });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ [field]: 50 });
 
     expect(res.status).toBe(200);
     expect(res.body[field]).toBe(50);
@@ -315,10 +323,10 @@ describe('PUT /api/body-logs/:date — ghi MỘT số đo không đụng bốn s
 
   it.each(MEASURE_FIELDS)('gửi null xoá đúng %s, bốn trường kia còn nguyên', async (field) => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, ...FULL_ROW },
+      data: { userId: user.id, date: YESTERDAY, ...FULL_ROW },
     });
 
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ [field]: null });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ [field]: null });
 
     expect(res.status).toBe(200);
     expect(res.body[field]).toBeNull();
@@ -329,13 +337,13 @@ describe('PUT /api/body-logs/:date — ghi MỘT số đo không đụng bốn s
   });
 
   it('gõ sai tên khoá → 400, KHÔNG lặng lẽ bỏ qua', async () => {
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ chest: 98 });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ chest: 98 });
 
     expect(res.status).toBe(400);
   });
 
   it('vòng ngực âm → 400 kèm đúng tên trường', async () => {
-    const res = await request(app).put(`/api/body-logs/${YESTERDAY}`).send({ chestCm: -5 });
+    const res = await agent.put(`/api/body-logs/${YESTERDAY}`).send({ chestCm: -5 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.fields.map((f: { path: string }) => f.path)).toContain('chestCm');
@@ -345,10 +353,10 @@ describe('PUT /api/body-logs/:date — ghi MỘT số đo không đụng bốn s
 describe('GET /api/body-logs/:date — trả đủ 5 số đo', () => {
   it('ngày ghi đủ năm số đo trả về đủ năm', async () => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: YESTERDAY, ...FULL_ROW },
+      data: { userId: user.id, date: YESTERDAY, ...FULL_ROW },
     });
 
-    const res = await request(app).get(`/api/body-logs/${YESTERDAY}`);
+    const res = await agent.get(`/api/body-logs/${YESTERDAY}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject(FULL_ROW);
@@ -360,13 +368,13 @@ describe('GET /api/body-logs?from=&to=', () => {
     // Chèn lộn xộn để bài test thực sự kiểm tra orderBy, không phải thứ tự chèn.
     await prisma.bodyLog.createMany({
       data: [
-        { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 71.9 },
-        { userId: LOCAL_USER_ID, date: FIVE_DAYS_AGO, weightKg: 73.1 },
-        { userId: LOCAL_USER_ID, date: TWO_DAYS_AGO, weightKg: 72.4 },
+        { userId: user.id, date: YESTERDAY, weightKg: 71.9 },
+        { userId: user.id, date: FIVE_DAYS_AGO, weightKg: 73.1 },
+        { userId: user.id, date: TWO_DAYS_AGO, weightKg: 72.4 },
       ],
     });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/body-logs')
       .query({ from: FIVE_DAYS_AGO, to: TODAY });
 
@@ -381,13 +389,13 @@ describe('GET /api/body-logs?from=&to=', () => {
   it('chỉ lấy ngày nằm trong khoảng, bao gồm hai đầu mút', async () => {
     await prisma.bodyLog.createMany({
       data: [
-        { userId: LOCAL_USER_ID, date: FIVE_DAYS_AGO, weightKg: 73.1 },
-        { userId: LOCAL_USER_ID, date: TWO_DAYS_AGO, weightKg: 72.4 },
-        { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 71.9 },
+        { userId: user.id, date: FIVE_DAYS_AGO, weightKg: 73.1 },
+        { userId: user.id, date: TWO_DAYS_AGO, weightKg: 72.4 },
+        { userId: user.id, date: YESTERDAY, weightKg: 71.9 },
       ],
     });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/body-logs')
       .query({ from: TWO_DAYS_AGO, to: YESTERDAY });
 
@@ -401,12 +409,12 @@ describe('GET /api/body-logs?from=&to=', () => {
   it('bỏ qua bản ghi của user khác', async () => {
     await prisma.bodyLog.createMany({
       data: [
-        { userId: OTHER_USER, date: TWO_DAYS_AGO, weightKg: 60.1 },
-        { userId: LOCAL_USER_ID, date: YESTERDAY, weightKg: 71.9 },
+        { userId: otherUser.id, date: TWO_DAYS_AGO, weightKg: 60.1 },
+        { userId: user.id, date: YESTERDAY, weightKg: 71.9 },
       ],
     });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/body-logs')
       .query({ from: FIVE_DAYS_AGO, to: TODAY });
 
@@ -415,7 +423,7 @@ describe('GET /api/body-logs?from=&to=', () => {
   });
 
   it('trả mảng rỗng khi khoảng không có dữ liệu', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/body-logs')
       .query({ from: FIVE_DAYS_AGO, to: TODAY });
 
@@ -424,7 +432,7 @@ describe('GET /api/body-logs?from=&to=', () => {
   });
 
   it('400 khi thiếu from', async () => {
-    const res = await request(app).get('/api/body-logs').query({ to: TODAY });
+    const res = await agent.get('/api/body-logs').query({ to: TODAY });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -434,7 +442,7 @@ describe('GET /api/body-logs?from=&to=', () => {
   });
 
   it('400 khi from > to', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/body-logs')
       .query({ from: YESTERDAY, to: FIVE_DAYS_AGO });
 
@@ -446,7 +454,7 @@ describe('GET /api/body-logs?from=&to=', () => {
   });
 
   it('400 khi khoảng vượt quá 730 ngày', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/body-logs')
       .query({ from: addDays(TODAY, -800), to: TODAY });
 

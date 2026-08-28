@@ -8,6 +8,36 @@
 import { apiClient } from '../../../lib/apiClient';
 import { ApiError, type SessionResponse, type SessionUser } from '../../../types/api';
 
+/**
+ * CSRF token hiện hành, giữ trong bộ nhớ module — KHÔNG localStorage.
+ *
+ * Server bật `csrf-csrf` (double-submit cookie có ký): mọi POST/PUT/PATCH/DELETE
+ * thiếu header `x-csrf-token` khớp cookie `lean.csrf` đều nhận `403 CSRF_ERROR`.
+ * `apiClient` gắn header đó từ hàm được cắm qua `setCsrfTokenProvider`; đây là
+ * nguồn của nó.
+ *
+ * PHẢI lấy lại sau mỗi lần đăng nhập VÀ đăng xuất: server buộc token vào
+ * `req.session.userId` (server/src/shared/security/csrf.ts), nên token cấp lúc
+ * còn vô danh chết ngay khi phiên bắt đầu, và ngược lại.
+ */
+let csrfToken: string | null = null;
+
+/** Hàm cắm vào `setCsrfTokenProvider` — đọc đồng bộ, không gọi mạng. */
+export function currentCsrfToken(): string | null {
+  return csrfToken;
+}
+
+export async function refreshCsrfToken(): Promise<string> {
+  const res = await apiClient.get<{ csrfToken: string }>('/auth/csrf');
+  csrfToken = res.csrfToken;
+  return csrfToken;
+}
+
+/** Lấy token nếu chưa có. Chặn ca người dùng bấm Đăng nhập trước khi app kịp nạp. */
+async function ensureCsrfToken(): Promise<void> {
+  if (csrfToken === null) await refreshCsrfToken();
+}
+
 export interface LoginInput {
   email: string;
   password: string;
@@ -27,8 +57,13 @@ export interface RegisterInput {
  * cũng trả đúng mã và đúng message đó — server không phân biệt hai ca, để form
  * đăng nhập không thành công cụ dò xem email nào có tài khoản.
  */
-export function login(input: LoginInput): Promise<SessionResponse> {
-  return apiClient.post<SessionResponse>('/auth/login', input);
+export async function login(input: LoginInput): Promise<SessionResponse> {
+  await ensureCsrfToken();
+  const session = await apiClient.post<SessionResponse>('/auth/login', input);
+  // Phiên vừa bắt đầu → định danh buộc token đổi từ '' sang userId. Bỏ dòng này
+  // là mọi thao tác ghi sau khi đăng nhập nhận 403.
+  await refreshCsrfToken();
+  return session;
 }
 
 /**
@@ -38,13 +73,18 @@ export function login(input: LoginInput): Promise<SessionResponse> {
  *
  * KHÔNG tự đăng nhập sau khi đăng ký: server không mở phiên ở endpoint này.
  */
-export function register(input: RegisterInput): Promise<{ user: SessionUser }> {
+export async function register(input: RegisterInput): Promise<{ user: SessionUser }> {
+  await ensureCsrfToken();
   return apiClient.post<{ user: SessionUser }>('/auth/register', input);
 }
 
 /** `POST /api/auth/logout` — 204, idempotent (gọi khi đã hết phiên vẫn 204). */
-export function logout(): Promise<void> {
-  return apiClient.post<void>('/auth/logout');
+export async function logout(): Promise<void> {
+  await ensureCsrfToken();
+  await apiClient.post<void>('/auth/logout');
+  // Phiên kết thúc → định danh về lại ''. Lấy token mới để màn hình đăng nhập
+  // kế tiếp dùng được ngay.
+  await refreshCsrfToken();
 }
 
 /**

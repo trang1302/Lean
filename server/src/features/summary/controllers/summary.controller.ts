@@ -10,5 +10,5 @@ import * as summaryService from '../services/summary.service.js';
  */
 export async function getSummary(req: Request, res: Response): Promise<void> {
   const range = summaryQuerySchema.parse(req.query);
-  res.json(await summaryService.getSummary(range));
+  res.json(await summaryService.getSummary(req.user!.id, range));
 }

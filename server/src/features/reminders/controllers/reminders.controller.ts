@@ -10,13 +10,13 @@ import { listReminders, updateReminder } from '../services/reminders.service.js'
  */
 export const remindersController = Router();
 
-remindersController.get('/', async (_req: Request, res: Response) => {
-  res.json(await listReminders());
+remindersController.get('/', async (req: Request, res: Response) => {
+  res.json(await listReminders(req.user!.id));
 });
 
 // `Request<{ kind: string }>` chứ không phải `Request` trần: kiểu params mặc
 // định của Express 5 là `string | string[] | undefined`.
 remindersController.put('/:kind', async (req: Request<{ kind: string }>, res: Response) => {
   const input = updateReminderSchema.parse(req.body);
-  res.json(await updateReminder(req.params.kind, input));
+  res.json(await updateReminder(req.user!.id, req.params.kind, input));
 });

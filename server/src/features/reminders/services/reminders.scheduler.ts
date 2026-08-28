@@ -5,12 +5,12 @@ import {
   type NtfyMessage,
   type NtfySendResult,
 } from '../../../shared/clients/ntfy.client.js';
-import type { ReminderView } from '../dtos/reminders.response.js';
+import { toReminderRow, type ReminderRow, type ReminderView } from '../dtos/reminders.response.js';
 import {
+  findRemindersForAllUsers,
   hasMealLoggedOn,
   hasWeightLoggedOn,
 } from '../repositories/reminders.repository.js';
-import { listReminders } from './reminders.service.js';
 
 /**
  * Nhắc nhở CHỈ chạy khi server đang bật và KHÔNG gửi bù (spec §8).
@@ -24,6 +24,8 @@ const EVERY_MINUTE = '0 * * * * *';
 export type ReminderRunStatus = 'sent' | 'already-logged' | 'send-failed';
 
 export interface ReminderRunOutcome {
+  /** Ai — có nhiều người dùng thì log thiếu cái này là không lần ra được gì. */
+  userId: string;
   kind: string;
   status: ReminderRunStatus;
 }
@@ -33,14 +35,22 @@ export interface ReminderRunOutcome {
  * được cả một lượt quét mà không cần DB thật lẫn kết nối mạng.
  */
 export interface ReminderRunnerDeps {
-  listReminders(): Promise<ReminderView[]>;
-  hasWeightLogged(date: string): Promise<boolean>;
-  hasMealLogged(date: string): Promise<boolean>;
+  /**
+   * Nhắc nhở của MỌI người dùng. Scheduler chạy từ cron nên không có phiên,
+   * không có ai để lọc theo — nó quét toàn bộ rồi tự phân nhánh theo `userId`
+   * của từng hàng.
+   */
+  listReminders(): Promise<ReminderRow[]>;
+  hasWeightLogged(userId: string, date: string): Promise<boolean>;
+  hasMealLogged(userId: string, date: string): Promise<boolean>;
   send(message: NtfyMessage): Promise<NtfySendResult>;
 }
 
 export const defaultReminderRunnerDeps: ReminderRunnerDeps = {
-  listReminders,
+  // KHÔNG dùng `remindersService.listReminders` — hàm đó nhận một `userId` và
+  // trả về view đã bù giá trị mặc định cho loại chưa cấu hình. Scheduler cần
+  // đúng những hàng CÓ THẬT trong DB, của mọi người, kèm chủ sở hữu.
+  listReminders: async () => (await findRemindersForAllUsers()).map(toReminderRow),
   hasWeightLogged: hasWeightLoggedOn,
   hasMealLogged: hasMealLoggedOn,
   send: sendNtfyNotification,
@@ -81,10 +91,10 @@ export function localTimeOfDay(now: Date): string {
  * cho logic "đến giờ nào gửi cái gì" test được mà không phải chờ đồng hồ.
  * Không đọc DB, không gửi gì, không sửa mảng đầu vào.
  */
-export function selectDueReminders(
-  reminders: readonly ReminderView[],
+export function selectDueReminders<T extends ReminderView>(
+  reminders: readonly T[],
   now: Date,
-): ReminderView[] {
+): T[] {
   const currentTime = localTimeOfDay(now);
   return reminders.filter(
     (reminder) =>
@@ -100,12 +110,13 @@ export function selectDueReminders(
  * không biết cách kiểm tra thì không gửi.
  */
 async function needsReminder(
+  userId: string,
   kind: string,
   date: string,
   deps: ReminderRunnerDeps,
 ): Promise<boolean> {
-  if (kind === 'weigh_in') return !(await deps.hasWeightLogged(date));
-  if (kind === 'meal_log') return !(await deps.hasMealLogged(date));
+  if (kind === 'weigh_in') return !(await deps.hasWeightLogged(userId, date));
+  if (kind === 'meal_log') return !(await deps.hasMealLogged(userId, date));
   return false;
 }
 
@@ -126,8 +137,11 @@ export async function runDueReminders(
   const outcomes: ReminderRunOutcome[] = [];
 
   for (const reminder of due) {
-    if (!(await needsReminder(reminder.kind, date, deps))) {
-      outcomes.push({ kind: reminder.kind, status: 'already-logged' });
+    // `reminder.userId`, KHÔNG phải một userId nào lấy sẵn ngoài vòng lặp:
+    // mỗi hàng thuộc một người khác nhau. Hỏi nhầm người là gửi nhắc cho người
+    // đã ghi cân và im lặng với người chưa ghi.
+    if (!(await needsReminder(reminder.userId, reminder.kind, date, deps))) {
+      outcomes.push({ userId: reminder.userId, kind: reminder.kind, status: 'already-logged' });
       continue;
     }
 
@@ -141,7 +155,11 @@ export async function runDueReminders(
       tags: notification.tags,
     });
 
-    outcomes.push({ kind: reminder.kind, status: result.sent ? 'sent' : 'send-failed' });
+    outcomes.push({
+      userId: reminder.userId,
+      kind: reminder.kind,
+      status: result.sent ? 'sent' : 'send-failed',
+    });
   }
 
   return outcomes;

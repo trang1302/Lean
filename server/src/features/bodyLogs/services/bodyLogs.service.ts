@@ -20,26 +20,27 @@ function toResponse(row: BodyLog): BodyLogResponse {
   };
 }
 
-export async function getByDate(date: string): Promise<BodyLogResponse> {
-  const row = await repository.findByDate(date);
+export async function getByDate(userId: string, date: string): Promise<BodyLogResponse> {
+  const row = await repository.findByDate(userId, date);
   if (!row) throw AppError.notFound(`Chưa có số đo cho ngày ${date}`);
   return toResponse(row);
 }
 
-export async function listInRange(range: DateRange): Promise<BodyLogResponse[]> {
-  const rows = await repository.findInRange(range.from, range.to);
+export async function listInRange(userId: string, range: DateRange): Promise<BodyLogResponse[]> {
+  const rows = await repository.findInRange(userId, range.from, range.to);
   return rows.map(toResponse);
 }
 
 export async function upsertByDate(
+  userId: string,
   date: string,
   patch: BodyLogUpsertPatch,
 ): Promise<BodyLogResponse> {
-  const row = await repository.upsertByDate(date, patch);
+  const row = await repository.upsertByDate(userId, date, patch);
   return toResponse(row);
 }
 
-export async function removeByDate(date: string): Promise<void> {
-  const deleted = await repository.deleteByDate(date);
+export async function removeByDate(userId: string, date: string): Promise<void> {
+  const deleted = await repository.deleteByDate(userId, date);
   if (!deleted) throw AppError.notFound(`Chưa có số đo cho ngày ${date}`);
 }

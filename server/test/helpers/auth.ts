@@ -1,41 +1,80 @@
+import request from 'supertest';
+import type { Express } from 'express';
 import { prisma } from '../../src/lib/db.js';
-import { LOCAL_USER_ID } from '../../src/shared/constants.js';
+import { hashPassword } from '../../src/shared/security/password.js';
 
 /**
- * User thứ hai mà các test cách ly dùng. Giá trị phải khớp hằng `OTHER_USER`
- * khai trong từng file test — chúng có sẵn trước helper này.
+ * Helper dựng user thật + agent supertest đã đăng nhập.
+ *
+ * Thay hoàn toàn `seedTestUsers()` — bản vá tạm dựng hai hàng `User` có id cố
+ * định (`local`, `someone-else`) để bốn bảng dữ liệu qua được khóa ngoại khi
+ * chưa có auth. Từ khi `userId` đến từ phiên, test phải đi qua đúng đường mà
+ * người dùng thật đi: tạo user → đăng nhập → gọi API bằng cookie.
  */
-export const OTHER_USER_ID = 'someone-else';
+
+export interface TestUser {
+  id: string;
+  email: string;
+  password: string;
+}
+
+export type Agent = ReturnType<typeof request.agent>;
+
+export async function createTestUser(
+  email: string,
+  password = 'matkhaudai12',
+): Promise<TestUser> {
+  const user = await prisma.user.create({
+    data: { email, passwordHash: await hashPassword(password) },
+  });
+  return { id: user.id, email, password };
+}
 
 /**
- * Dựng hai hàng `User` mà bốn bảng dữ liệu trỏ khóa ngoại tới.
+ * Lấy CSRF token hiện hành và gắn làm header mặc định cho MỌI request sau đó
+ * của agent.
  *
- * Bắt buộc trong `beforeEach` của mọi test tạo `BodyLog`/`Meal`/`Goal`/`Reminder`:
- * từ khi bốn bảng đó có `user User @relation(...)`, chèn bản ghi mang một
- * `userId` không tồn tại bị SQLite từ chối với `P2003`.
- *
- * Dựng CẢ `OTHER_USER_ID` kể cả cho file không dùng tới nó. Nhóm test quan
- * trọng nhất của suite là nhóm chứng minh dữ liệu không rò giữa hai người dùng
- * (`không thấy bản ghi của user khác`, …), và nhóm đó cần hàng `User` thứ hai
- * tồn tại thật. Một hàng thừa không làm sai test nào; thiếu nó thì 11 test cách
- * ly chết vì khóa ngoại thay vì vì logic chúng đang kiểm.
- *
- * `upsert` chứ không `create` vì thứ tự file test không đảm bảo và hàng có thể
- * còn sót từ file trước — `create` sẽ ném lỗi trùng khóa chính.
- *
- * Giai đoạn A Task 10 bổ sung vào file này helper dựng agent supertest đã đăng
- * nhập; khi đó những test gọi API sẽ dùng helper đó thay vì hàm này trực tiếp.
+ * Phải gọi LẠI sau mỗi lần đăng nhập/đăng xuất: token buộc vào
+ * `req.session.userId` (xem `src/shared/security/csrf.ts`), nên nó hết hiệu
+ * lực đúng lúc phiên bắt đầu hoặc kết thúc.
  */
-export async function seedTestUsers(): Promise<void> {
-  await prisma.user.upsert({
-    where: { id: LOCAL_USER_ID },
-    update: {},
-    create: { id: LOCAL_USER_ID, email: 'local@lean.local', passwordHash: 'x' },
-  });
+export async function attachCsrf(agent: Agent): Promise<Agent> {
+  const res = await agent.get('/api/auth/csrf');
+  agent.set('x-csrf-token', res.body.csrfToken as string);
+  return agent;
+}
 
-  await prisma.user.upsert({
-    where: { id: OTHER_USER_ID },
-    update: {},
-    create: { id: OTHER_USER_ID, email: 'other@lean.local', passwordHash: 'x' },
-  });
+/** Agent chưa đăng nhập nhưng đã cầm CSRF token — đủ để POST /register, /login. */
+export async function anonAgent(app: Express): Promise<Agent> {
+  return attachCsrf(request.agent(app));
+}
+
+/**
+ * Đăng nhập trên một agent có sẵn và tự làm mới CSRF token khi thành công.
+ * Trả về nguyên response để test còn assert status/body.
+ */
+export async function loginWith(agent: Agent, email: string, password: string) {
+  const res = await agent.post('/api/auth/login').send({ email, password });
+  if (res.status === 200) await attachCsrf(agent);
+  return res;
+}
+
+/**
+ * Agent đã đăng nhập, sẵn sàng gọi mọi endpoint dữ liệu.
+ *
+ * `request.agent(app)` giữ cookie giữa các request — khác `request(app)` vốn
+ * tạo request độc lập và vì thế luôn nhận 401 sau khi có `requireAuth`.
+ *
+ * KHÔNG tắt CSRF trong test — làm thế là test một app khác với app chạy thật.
+ */
+export async function loginAgent(app: Express, user: TestUser): Promise<Agent> {
+  const agent = await anonAgent(app);
+  const res = await loginWith(agent, user.email, user.password);
+
+  if (res.status !== 200) {
+    // Không để test đỏ ở một assert xa tít phía dưới với lý do khó hiểu.
+    throw new Error(`loginAgent: đăng nhập thất bại (${res.status}) ${JSON.stringify(res.body)}`);
+  }
+
+  return agent;
 }

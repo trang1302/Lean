@@ -2,11 +2,17 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../../src/app.js';
 import { prisma } from '../../../src/lib/db.js';
-import { LOCAL_USER_ID } from '../../../src/shared/constants.js';
-import { seedTestUsers } from '../../helpers/auth.js';
+import { createTestUser, loginAgent, type Agent, type TestUser } from '../../helpers/auth.js';
 import { addDays, todayIso } from '../../../src/lib/time.js';
 
 const app = createApp();
+
+// Người dùng thật + agent đã đăng nhập, dựng lại ở mỗi test.
+// `otherUser` là chủ sở hữu của những bản ghi mà test cách ly dùng để chứng
+// minh dữ liệu không rò sang người đang gọi API.
+let user: TestUser;
+let otherUser: TestUser;
+let agent: Agent;
 
 /**
  * Mọi fixture neo vào `todayIso()` chứ không dùng ngày cứng: khối `goal` của
@@ -23,7 +29,7 @@ async function seedBodyLog(
 ): Promise<void> {
   await prisma.bodyLog.create({
     data: {
-      userId: LOCAL_USER_ID,
+      userId: user.id,
       date,
       weightKg: values.weightKg ?? null,
       waistCm: values.waistCm ?? null,
@@ -34,7 +40,7 @@ async function seedBodyLog(
 
 async function seedMeal(date: string, name: string, calories: number): Promise<void> {
   await prisma.meal.create({
-    data: { userId: LOCAL_USER_ID, date, slot: 'lunch', name, calories },
+    data: { userId: user.id, date, slot: 'lunch', name, calories },
   });
 }
 
@@ -43,7 +49,11 @@ beforeEach(async () => {
   await prisma.bodyLog.deleteMany();
   await prisma.goal.deleteMany();
   await prisma.reminder.deleteMany();
-  await seedTestUsers();
+  await prisma.session.deleteMany();
+  await prisma.user.deleteMany();
+  user = await createTestUser('alice@lean.local');
+  otherUser = await createTestUser('bob@lean.local');
+  agent = await loginAgent(app, user);
 });
 
 afterAll(async () => {
@@ -52,7 +62,7 @@ afterAll(async () => {
 
 describe('GET /api/summary — hình dạng response', () => {
   it('trả đủ ba khối days, weeks, goal', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(58) });
 
@@ -67,7 +77,7 @@ describe('GET /api/summary — hình dạng response', () => {
   it('mỗi phần tử days có đủ 7 trường theo §5', async () => {
     await seedBodyLog(dayAgo(60), { weightKg: 72.4, waistCm: 88 });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(60) });
 
@@ -92,7 +102,7 @@ describe('GET /api/summary — hình dạng response', () => {
   });
 
   it('khối goal có đủ 10 trường theo §5', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(58) });
 
@@ -115,7 +125,7 @@ describe('GET /api/summary — hình dạng response', () => {
 
 describe('GET /api/summary — days', () => {
   it('có đúng một phần tử cho mỗi ngày lịch trong khoảng, kể cả ngày trống', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(56) });
 
@@ -132,7 +142,7 @@ describe('GET /api/summary — days', () => {
   it('trả số đo thô đúng ngày, null ở ngày không ghi', async () => {
     await seedBodyLog(dayAgo(59), { weightKg: 72.4, waistCm: 88 });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(59) });
 
@@ -144,7 +154,7 @@ describe('GET /api/summary — days', () => {
     // Một số đo duy nhất trong toàn bộ lịch sử — mọi cửa sổ đều có ≤ 1 giá trị.
     await seedBodyLog(dayAgo(59), { weightKg: 71 });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(58) });
 
@@ -162,7 +172,7 @@ describe('GET /api/summary — days', () => {
     await seedBodyLog(dayAgo(61), { weightKg: 72, waistCm: 92 });
     await seedBodyLog(dayAgo(60), { weightKg: 74, waistCm: 94 });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(60) });
 
@@ -183,7 +193,7 @@ describe('GET /api/summary — days', () => {
     await seedBodyLog(dayAgo(1), { chestCm: 96 });
     await seedBodyLog(dayAgo(0), { chestCm: 98 });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(0), to: dayAgo(0) });
 
@@ -196,7 +206,7 @@ describe('GET /api/summary — days', () => {
     await seedMeal(dayAgo(59), 'Cơm tấm', 700);
     await seedMeal(dayAgo(58), 'Bún bò', 600);
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(59), to: dayAgo(58) });
 
@@ -207,7 +217,7 @@ describe('GET /api/summary — days', () => {
   it('ngày không ghi bữa nào có totalCalories 0 và mealCount 0', async () => {
     await seedMeal(dayAgo(59), 'Phở', 450);
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(59) });
 
@@ -224,7 +234,7 @@ describe('GET /api/summary — weeks', () => {
     await seedBodyLog('2026-03-02', { weightKg: 72 });
     await seedBodyLog('2026-03-04', { weightKg: 74 });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: '2026-03-02', to: '2026-03-08' });
 
@@ -237,7 +247,7 @@ describe('GET /api/summary — weeks', () => {
   });
 
   it('tuần không có dữ liệu vẫn xuất hiện với avg null', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: '2026-03-02', to: '2026-03-08' });
 
@@ -251,7 +261,7 @@ describe('GET /api/summary — goal', () => {
   it('toàn null khi chưa đặt mục tiêu và chưa có số đo gần đây', async () => {
     await seedBodyLog(dayAgo(60), { weightKg: 72 });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(58) });
 
@@ -273,7 +283,7 @@ describe('GET /api/summary — goal', () => {
     await seedBodyLog(dayAgo(1), { weightKg: 73 });
     await seedBodyLog(TODAY, { weightKg: 73 });
 
-    const res = await request(app).get('/api/summary').query({ from: dayAgo(2), to: TODAY });
+    const res = await agent.get('/api/summary').query({ from: dayAgo(2), to: TODAY });
 
     expect(res.body.goal.currentMa7WeightKg).toBeCloseTo(73, 10);
     expect(res.body.goal.targetWeightKg).toBeNull();
@@ -294,14 +304,14 @@ describe('GET /api/summary — goal', () => {
     await seedBodyLog(TODAY, { weightKg: 73 });
     await prisma.goal.create({
       data: {
-        userId: LOCAL_USER_ID,
+        userId: user.id,
         targetWeightKg: 68,
         targetDate: addDays(TODAY, 14),
         dailyCalorieTarget: 1900,
       },
     });
 
-    const res = await request(app).get('/api/summary').query({ from: dayAgo(2), to: TODAY });
+    const res = await agent.get('/api/summary').query({ from: dayAgo(2), to: TODAY });
 
     expect(res.status).toBe(200);
     expect(res.body.goal.targetWeightKg).toBe(68);
@@ -322,10 +332,10 @@ describe('GET /api/summary — goal', () => {
     await seedBodyLog(dayAgo(1), { weightKg: 70 });
     await seedBodyLog(TODAY, { weightKg: 70 });
     await prisma.goal.create({
-      data: { userId: LOCAL_USER_ID, targetWeightKg: 70, targetDate: addDays(TODAY, 7) },
+      data: { userId: user.id, targetWeightKg: 70, targetDate: addDays(TODAY, 7) },
     });
 
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: dayAgo(60), to: dayAgo(58) });
 
@@ -336,7 +346,7 @@ describe('GET /api/summary — goal', () => {
 
 describe('GET /api/summary — validate', () => {
   it('400 khi from > to', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: '2026-03-10', to: '2026-03-01' });
 
@@ -346,7 +356,7 @@ describe('GET /api/summary — validate', () => {
   });
 
   it('400 khi khoảng vượt quá 730 ngày', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: addDays(TODAY, -800), to: TODAY });
 
@@ -356,21 +366,21 @@ describe('GET /api/summary — validate', () => {
   });
 
   it('400 khi thiếu from', async () => {
-    const res = await request(app).get('/api/summary').query({ to: TODAY });
+    const res = await agent.get('/api/summary').query({ to: TODAY });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('400 khi thiếu to', async () => {
-    const res = await request(app).get('/api/summary').query({ from: TODAY });
+    const res = await agent.get('/api/summary').query({ from: TODAY });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('400 khi from không phải ngày có thật', async () => {
-    const res = await request(app)
+    const res = await agent
       .get('/api/summary')
       .query({ from: '2026-02-30', to: '2026-03-01' });
 
@@ -389,7 +399,7 @@ describe('GET /api/summary — cả 5 số đo đều có cặp thô + MA7', () 
   ] as const;
 
   it.each(MEASURE_PAIRS)('mỗi ngày mang %s và %s', async (rawKey, ma7Key) => {
-    const res = await request(app).get(`/api/summary?from=${TWO_DAYS_AGO}&to=${TODAY}`);
+    const res = await agent.get(`/api/summary?from=${TWO_DAYS_AGO}&to=${TODAY}`);
 
     expect(res.status).toBe(200);
     for (const day of res.body.days) {
@@ -403,10 +413,10 @@ describe('GET /api/summary — cả 5 số đo đều có cặp thô + MA7', () 
   // không thì một điểm đơn lẻ sẽ được vẽ như thể nó là trung bình.
   it.each(MEASURE_PAIRS)('%s chỉ có 1 giá trị trong cửa sổ → %s là null', async (rawKey, ma7Key) => {
     await prisma.bodyLog.create({
-      data: { userId: LOCAL_USER_ID, date: TODAY, [rawKey]: 50 },
+      data: { userId: user.id, date: TODAY, [rawKey]: 50 },
     });
 
-    const res = await request(app).get(`/api/summary?from=${TODAY}&to=${TODAY}`);
+    const res = await agent.get(`/api/summary?from=${TODAY}&to=${TODAY}`);
 
     const today = res.body.days.find((d: { date: string }) => d.date === TODAY);
     expect(today[rawKey]).toBe(50);
@@ -415,10 +425,10 @@ describe('GET /api/summary — cả 5 số đo đều có cặp thô + MA7', () 
 
   it('goal trả startWeightKg và startDate đọc thẳng từ bảng', async () => {
     await prisma.goal.create({
-      data: { userId: LOCAL_USER_ID, startWeightKg: 75, startDate: FIVE_DAYS_AGO },
+      data: { userId: user.id, startWeightKg: 75, startDate: FIVE_DAYS_AGO },
     });
 
-    const res = await request(app).get(`/api/summary?from=${TWO_DAYS_AGO}&to=${TODAY}`);
+    const res = await agent.get(`/api/summary?from=${TWO_DAYS_AGO}&to=${TODAY}`);
 
     expect(res.body.goal.startWeightKg).toBe(75);
     expect(res.body.goal.startDate).toBe(FIVE_DAYS_AGO);

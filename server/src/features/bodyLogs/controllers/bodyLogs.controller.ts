@@ -22,22 +22,22 @@ export function registerBodyLogsRoutes(router: Router): void {
   // Router đã được mount ở `/api/body-logs`, nên path ở đây là tương đối.
   router.get('/', async (req: Request, res: Response) => {
     const range = bodyLogRangeQuerySchema.parse(req.query);
-    res.json(await service.listInRange(range));
+    res.json(await service.listInRange(req.user!.id, range));
   });
 
   router.get('/:date', async (req: Request, res: Response) => {
-    res.json(await service.getByDate(parseDateParam(req)));
+    res.json(await service.getByDate(req.user!.id, parseDateParam(req)));
   });
 
   router.put('/:date', async (req: Request, res: Response) => {
     // Validate `:date` trước body: ngày tương lai phải bị chặn kể cả khi body hỏng.
     const date = parseDateParam(req);
     const patch = parseUpsertBodyLog(req.body);
-    res.json(await service.upsertByDate(date, patch));
+    res.json(await service.upsertByDate(req.user!.id, date, patch));
   });
 
   router.delete('/:date', async (req: Request, res: Response) => {
-    await service.removeByDate(parseDateParam(req));
+    await service.removeByDate(req.user!.id, parseDateParam(req));
     res.status(204).end();
   });
 }

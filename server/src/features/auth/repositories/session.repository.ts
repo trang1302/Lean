@@ -43,6 +43,22 @@ export async function deleteSessionsByUserId(userId: string): Promise<number> {
   return result.count;
 }
 
+/**
+ * Thu hồi mọi phiên KHÁC của một user, giữ lại đúng `keepSessionId`.
+ *
+ * `keepSessionId` là phiên VỪA tạo lúc đăng nhập. Thiếu điều kiện `not` này thì
+ * đăng nhập tự xóa chính phiên của mình, và triệu chứng trông y hệt "login hỏng".
+ */
+export async function deleteSessionsByUserIdExcept(
+  userId: string,
+  keepSessionId: string,
+): Promise<number> {
+  const result = await prisma.session.deleteMany({
+    where: { userId, id: { not: keepSessionId } },
+  });
+  return result.count;
+}
+
 export async function deleteExpiredSessions(now: Date): Promise<number> {
   const result = await prisma.session.deleteMany({ where: { expiresAt: { lt: now } } });
   return result.count;

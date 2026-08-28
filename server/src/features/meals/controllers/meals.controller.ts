@@ -24,12 +24,12 @@ export function registerMealsRoutes(router: Router): void {
 
 async function listMeals(req: Request, res: Response): Promise<void> {
   const { date } = listMealsQuerySchema.parse(req.query);
-  res.json(await mealsService.listMealsByDate(date));
+  res.json(await mealsService.listMealsByDate(req.user!.id, date));
 }
 
 async function createMeal(req: Request, res: Response): Promise<void> {
   const input = createMealSchema.parse(req.body);
-  res.status(201).json(await mealsService.addMeal(input));
+  res.status(201).json(await mealsService.addMeal(req.user!.id, input));
 }
 
 async function updateMeal(req: Request, res: Response): Promise<void> {
@@ -37,11 +37,11 @@ async function updateMeal(req: Request, res: Response): Promise<void> {
   // trước cho người dùng biết phải sửa gì.
   const input = updateMealSchema.parse(req.body);
   const { id } = mealIdParamSchema.parse(req.params);
-  res.json(await mealsService.editMeal(id, input));
+  res.json(await mealsService.editMeal(req.user!.id, id, input));
 }
 
 async function deleteMeal(req: Request, res: Response): Promise<void> {
   const { id } = mealIdParamSchema.parse(req.params);
-  await mealsService.removeMeal(id);
+  await mealsService.removeMeal(req.user!.id, id);
   res.status(204).end();
 }

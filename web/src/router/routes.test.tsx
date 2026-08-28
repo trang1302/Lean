@@ -26,6 +26,11 @@ vi.mock('../features/auth/api/auth.api', () => ({
   login: vi.fn(),
   logout: vi.fn(),
   register: vi.fn(),
+  // `SessionProvider.refresh()` lấy CSRF token trước khi hỏi phiên. Thiếu hai
+  // hàm này trong mock thì provider ném ngay ở dòng đầu và MỌI test "đã đăng
+  // nhập" thất bại với lý do chẳng liên quan gì tới điều nó đang kiểm.
+  refreshCsrfToken: vi.fn().mockResolvedValue('test-csrf-token'),
+  currentCsrfToken: vi.fn().mockReturnValue('test-csrf-token'),
 }));
 
 // eslint-disable-next-line import/first -- phải nằm sau vi.mock để lấy bản mock

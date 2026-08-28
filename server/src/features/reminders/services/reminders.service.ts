@@ -34,8 +34,8 @@ function defaultView(kind: ReminderKind): ReminderView {
  * Không "seed" hàng vào DB khi đọc: ghi dữ liệu trong một request GET là bẫy
  * cổ điển. Loại chưa cấu hình đơn giản là hiện giá trị mặc định.
  */
-export async function listReminders(): Promise<ReminderView[]> {
-  const rows = await findAllReminders();
+export async function listReminders(userId: string): Promise<ReminderView[]> {
+  const rows = await findAllReminders(userId);
   const byKind = new Map<string, ReminderRecord>(rows.map((row) => [row.kind, row]));
 
   return REMINDER_KINDS.map((kind) => {
@@ -52,6 +52,7 @@ export async function listReminders(): Promise<ReminderView[]> {
  * định, người dùng không tự tạo loại mới.
  */
 export async function updateReminder(
+  userId: string,
   kind: string,
   input: UpdateReminderInput,
 ): Promise<ReminderView> {
@@ -59,6 +60,6 @@ export async function updateReminder(
     throw AppError.notFound(`Không có loại nhắc nhở '${kind}'`);
   }
 
-  const row = await upsertReminder(kind, DEFAULTS[kind], input);
+  const row = await upsertReminder(userId, kind, DEFAULTS[kind], input);
   return toReminderView(row);
 }
